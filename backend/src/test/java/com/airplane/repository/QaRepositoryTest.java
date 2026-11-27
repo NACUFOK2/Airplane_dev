@@ -15,7 +15,7 @@ class QaRepositoryTest {
     }
 
     private final OrganizationRepository orgs = new OrganizationRepository(new RagProperties(
-            "data/qa_embeddings.jsonl", List.of(), null, null, null,
+            "data/qa_embeddings.jsonl", List.of(), null, null, null, null,
             List.of(org("hanatour", "하나투어", "여행사", "hanatour.com"), org("modetour", "모두투어", "여행사", "modetour.co.kr"),
                     org("ybtour", "노랑풍선", "여행사", "ybtour.co.kr"), org("verygoodtour", "참좋은여행", "여행사", "verygoodtour.com"),
                     org("koreanair", "대한항공", "항공사", "koreanair.com"), org("jejuair", "제주항공", "항공사", "jejuair.net"),

@@ -21,6 +21,7 @@ class RetrievalServiceTest {
             new RagProperties.Retrieval(4, 60, 50, 0.50, true, true, 8),
             new RagProperties.Embedding("http://unused", 1000, 384),
             new RagProperties.Llm("extractive", "m", 100, 3),
+            new RagProperties.Feedback(false, "unused"),
             List.of(new RagProperties.OrganizationDef("koreanair", "대한항공", "항공사", "#000", List.of("koreanair.com")),
                     new RagProperties.OrganizationDef("jejuair", "제주항공", "항공사", "#000", List.of("jejuair.net"))));
     private final OrganizationRepository orgs = new OrganizationRepository(props);

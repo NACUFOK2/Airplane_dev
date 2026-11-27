@@ -21,7 +21,7 @@ export function useChat(orgCode: string) {
         const res = await api.ask(q, orgCode, history);
         setMessages((prev) => [
           ...prev,
-          { id: uid(), role: "assistant", content: res.answer, sources: res.sources, mode: res.mode, retrieval: res.retrieval },
+          { id: uid(), role: "assistant", content: res.answer, sources: res.sources, mode: res.mode, retrieval: res.retrieval, question: q },
         ]);
       } catch (e) {
         setMessages((prev) => [
