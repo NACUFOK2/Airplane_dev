@@ -179,7 +179,9 @@ BM25 순위 상위 4건을 그대로 쓰고 `retrieval: "bm25"` 로 응답합니
 - 호출 깊이(`output_config.effort`)는 `low` (짧은 FAQ 요약이라 응답 속도 우선)
 - 안전 분류기가 거절하면 서버에서 대체 모델로 다시 시도: 헤더 `anthropic-beta: server-side-fallback-2026-07-01` + `fallbacks: "default"`
 - `stop_reason == refusal` 이면 정중한 거절 문구를 돌려줍니다.
-- 빈 응답, 요청 한도 초과(429), API 오류 상태 코드면 **추출형 답변으로 대체**합니다.
+- 빈 응답, 요청 한도 초과(429), API 오류 상태 코드, **네트워크 오류(타임아웃·연결 실패)**, 그 밖의 SDK 오류면 **추출형 답변으로 대체**합니다.
+- 생성 결과는 `LlmAnswer(text, mode)` 로 돌려줍니다. 대체가 일어나면 `mode` 가 `extractive` 로 바뀌어 응답에 그대로 반영됩니다.
+- SDK 기본 재시도(2회) 때문에 연결 실패 시 대체 답변까지 약 4.5초가 걸립니다 (닫힌 포트로 실측).
 
 **추출형 답변**:
 - 기관이 정해졌거나 상위 1·2위가 같은 기관: "**기관** 기준으로 안내드려요" + 1위 답변 + 관련 질문 2개. 1위가 비공식 출처면 공식 확인 안내를 붙입니다.
@@ -254,7 +256,8 @@ API 키는 설정 파일에 넣지 않습니다. `ANTHROPIC_API_KEY` 환경변�
 |---|---|---|
 | 임베딩 서비스 꺼짐·3초 초과 | BM25 단독 검색, 유사도 기준 범위 판정 생략 | `retrieval: "bm25"` |
 | API 키 없음 | 추출형 답변 | `mode: "extractive"` |
-| Claude 429 / API 오류 / 빈 응답 | 추출형 답변으로 대체 | `mode: "claude"` (9장 참고) |
+| Claude 429 / API 오류 / 빈 응답 | 추출형 답변으로 대체 | `mode: "extractive"` |
+| Claude 네트워크 오류(타임아웃·연결 실패)·기타 SDK 오류 | 추출형 답변으로 대체 (재시도 포함 약 4.5초) | `mode: "extractive"` |
 | Claude 거절(`refusal`) | 서버 측 대체 모델 재시도 후에도 거절이면 거절 안내 | `mode: "claude"` |
 | 범위 밖·자료에 없는 기관 | LLM 호출 없이 안내, 미응답 기록 | `mode: "out_of_scope"` |
 | 잘못된 JSON·검증 실패 | 400 + 한국어 메시지 | |
@@ -278,7 +281,7 @@ API 키는 설정 파일에 넣지 않습니다. `ANTHROPIC_API_KEY` 환경변�
 | 검색 | `service/RetrievalService`, `rag/Bm25Index`, `rag/TextAnalyzer`, `rag/DenseIndex`, `rag/RankFusion` |
 | 질의 임베딩 | `client/HttpEmbeddingClient` → `embedding-service/app.py` |
 | 데이터 적재 | `repository/QaRepository`, `repository/OrganizationRepository` |
-| 생성 | `config/LlmConfig`, `llm/ClaudeLlmClient`, `llm/ExtractiveLlmClient`, `llm/PromptBuilder` |
+| 생성 | `config/LlmConfig`, `llm/ClaudeLlmClient`, `llm/ExtractiveLlmClient`, `llm/PromptBuilder`, `llm/LlmAnswer` |
 | 피드백 | `feedback/FeedbackService`, `feedback/PrivacyMasker` |
 | 인덱스 생성·평가·분석 | `embedding-service/scripts/build_index.py`, `eval/evaluate_v2.py`, `eval/analyze_data.py` |
 | 화면 | `frontend/src/app/page.tsx`, `hooks/useChat.ts`, `components/*` |
@@ -287,9 +290,9 @@ API 키는 설정 파일에 넣지 않습니다. `ANTHROPIC_API_KEY` 환경변�
 
 ## 9. 알려진 한계
 
-1. **Claude 모드는 실제 API 로 검증되지 않았습니다.** 개발 PC 에 API 키가 없어 추출형 모드로만 실행해 봤습니다. Claude 경로는 컴파일과 오류 처리 코드까지만 확인했습니다.
-2. **Claude 가 실패해 추출형으로 대체돼도 응답 `mode` 가 `claude` 로 표시됩니다.** 화면에는 영향이 적지만, 피드백 집계의 모드 구분이 부정확해질 수 있습니다.
-3. **Claude 네트워크 연결 오류(타임아웃·연결 실패)는 대체 처리가 없습니다.** HTTP 상태 오류만 추출형으로 대체하므로, 연결 오류는 500 `INTERNAL_ERROR` 가 됩니다.
+1. **Claude 의 실제 답변 품질은 검증되지 않았습니다.** 개발 PC 에 API 키가 없습니다. Claude 경로는 가짜 SDK 응답을 쓴 단위 테스트(성공·거절·빈 응답·네트워크 오류·기타 SDK 오류)와, 닫힌 포트로 실제 연결 실패를 일으킨 실행까지 확인했습니다.
+2. (해결됨, v0.3.0 이후) 대체 시 `mode` 가 `claude` 로 표시되던 문제 → `LlmAnswer` 로 실제 방식을 반환
+3. (해결됨, v0.3.0 이후) 네트워크 오류가 500 이 되던 문제 → `AnthropicIoException`·`AnthropicException` 도 추출형으로 대체
 4. **짧은 후속 질문 일부는 정답이 2~3위입니다.** 예: "기내는요?" (3.11 예시). Claude 모드는 상위 4건을 모두 보므로 답할 수 있지만, 추출형은 1위 답변을 보여줍니다.
 5. **`unsupported-names` 는 직접 관리하는 목록입니다.** 목록에 없는 기관은 유사도가 0.60 을 넘으면 다른 기관 자료로 검색될 수 있습니다. 이 경우 2차 방어선은 Claude 프롬프트입니다.
 6. **응답은 스트리밍이 아니라 완성된 답을 한 번에 돌려줍니다.**
