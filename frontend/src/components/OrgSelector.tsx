@@ -8,7 +8,7 @@ interface Props {
   onSelect: (code: string) => void;
 }
 
-const TYPES = ["전체", "여행사", "항공사"] as const;
+const TYPES = ["전체", "항공사", "여행사", "숙박업체"] as const;
 
 export default function OrgSelector({ organizations, selected, onSelect }: Props) {
   const selectedOrg = organizations.find((o) => o.code === selected);

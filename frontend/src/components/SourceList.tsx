@@ -9,7 +9,7 @@ export default function SourceList({ sources }: { sources: Source[] }) {
   return (
     <div className="sources">
       <button className="sources__toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        참고한 Q&A {sources.length}개
+        참고한 자료 {sources.length}개
         {sources.some((s) => !s.official) && <span className="sources__warn">· 비공식 출처 포함</span>}
         <span className={`chevron ${open ? "chevron--up" : ""}`}>›</span>
       </button>

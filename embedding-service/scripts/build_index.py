@@ -1,16 +1,21 @@
-"""Q&A 원본(XLSX/CSV) → 검색 인덱스(qa_embeddings.jsonl) 빌더.
+"""문답 원본(XLSX/CSV) → 검색 인덱스(qa_embeddings.jsonl) 빌더. v2 형식(질문 변형 포함).
 
 사용법
-    .venv/bin/python scripts/build_index.py <Q&A.xlsx | qa_metadata.csv> [--dry-run] [--reembed-all]
+    .venv/bin/python scripts/build_index.py <v2_QA_augmented.xlsx | v2_qa_metadata.csv> [--dry-run] [--reembed-all]
 
-- XLSX: 시트명이 '<유형>_Q&A' 이고 헤더가 (기관명, 질문, 답변, 출처) 인 시트를 모두 읽는다.
-- CSV : id,sheet,org_type,org,question,answer,source 형식 (qa_metadata.csv).
-- id 는 (기관, 질문)이 같으면 기존 값을 유지하고, 새 행에만 다음 번호를 붙인다 → 검색 평가셋 정답 id 가 깨지지 않는다.
-- 임베딩은 embed_text 가 바뀐 행만 새로 계산한다(--reembed-all 로 전체 재계산).
-  기존 벡터를 재사용하는 이유: docs/RAG_PARAMETERS.md '문서 벡터' 항목 참고.
-- 결과를 embedding-service/data 와 backend/src/main/resources/data 두 곳에 같은 내용으로 쓴다.
+입력 형식 (한 행 = 질문 변형 1개)
+    id, parent_id, variant, sheet, [category], org, question, original_question, answer, source
+    - variant: original(원문) / casual(구어체) / keyword(키워드) / rephrase(다른 표현)
+    - category 가 없으면 시트명('항공사_Q&A' → 항공사)에서 가져온다.
+
+동작
+    - id 와 embed_text 가 기존 인덱스와 같으면 벡터를 재사용하고, 새로 생기거나 바뀐 행만 임베딩한다.
+      (제공된 벡터를 유지하는 이유: docs/RAG_PARAMETERS.md '문서 벡터' 항목)
+    - 원문마다 original 변형이 정확히 1개인지, 같은 원문의 변형끼리 기관·답변·출처가 같은지 검사한다.
+    - 결과를 embedding-service/data 와 backend/src/main/resources/data 두 곳에 같은 내용으로 쓴다.
 """
 import argparse, csv, hashlib, json, re, sys
+from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -18,14 +23,25 @@ OUT_FILES = [ROOT / "data/qa_embeddings.jsonl",
              ROOT.parent / "backend/src/main/resources/data/qa_embeddings.jsonl"]
 MODEL_NAME = "dragonkue/multilingual-e5-small-ko-v2"
 DIM = 384
+KEYS = ["id", "parent_id", "variant", "sheet", "category", "org", "question", "original_question",
+        "answer", "source", "embed_text", "embedding"]
+VARIANTS = {"original", "casual", "keyword", "rephrase"}
+
+
+def clean(v):
+    return re.sub(r"[ \t]+", " ", str(v if v is not None else "")).strip()
 
 
 def embed_text(r):
     return f"[{r['org']}] 질문: {r['question']}\n답변: {r['answer']}"
 
 
-def clean(v):
-    return re.sub(r"[ \t]+", " ", str(v or "")).strip()
+def normalize(raw, where):
+    r = {k: clean(raw.get(k)) for k in KEYS[:10]}
+    if not r["category"]:
+        r["category"] = r["sheet"].split("_")[0] if "_" in r["sheet"] else ""
+    r["_where"] = where
+    return r
 
 
 def read_xlsx(path):
@@ -33,39 +49,45 @@ def read_xlsx(path):
     wb = openpyxl.load_workbook(path, read_only=True)
     out = []
     for ws in wb.worksheets:
-        m = re.match(r"^(.+)_Q&A$", ws.title)
-        if not m:
-            print(f"  건너뜀: 시트 '{ws.title}' (이름이 '<유형>_Q&A' 형식 아님)")
-            continue
         rows = list(ws.iter_rows(values_only=True))
+        if not rows:
+            continue
+        header = [clean(h) for h in rows[0]]
+        if "parent_id" not in header:
+            print(f"  건너뜀: 시트 '{ws.title}' (parent_id 열 없음)")
+            continue
         for i, row in enumerate(rows[1:], start=2):
-            if not row or not any(row):
-                continue
-            org, q, a, src = (list(row) + [None] * 4)[:4]
-            out.append({"sheet": ws.title, "org_type": m.group(1), "org": clean(org), "question": clean(q),
-                        "answer": clean(a), "source": clean(src), "_where": f"{ws.title}!{i}"})
+            if row and any(row):
+                out.append(normalize(dict(zip(header, row)), f"{ws.title}!{i}"))
     return out
 
 
 def read_csv(path):
     with open(path, encoding="utf-8-sig") as f:
-        return [{"sheet": r["sheet"], "org_type": r["org_type"], "org": clean(r["org"]), "question": clean(r["question"]),
-                 "answer": clean(r["answer"]), "source": clean(r["source"]), "_where": f"csv:{i}"}
-                for i, r in enumerate(csv.DictReader(f), start=2)]
+        return [normalize(r, f"csv:{i}") for i, r in enumerate(csv.DictReader(f), start=2)]
 
 
 def validate(rows):
-    errors, seen = [], {}
+    errors, ids, groups = [], {}, defaultdict(list)
     for r in rows:
-        for k in ("org_type", "org", "question", "answer"):
+        for k in ("id", "parent_id", "variant", "category", "org", "question", "original_question", "answer"):
             if not r[k]:
                 errors.append(f"{r['_where']}: '{k}' 비어 있음")
+        if r["variant"] and r["variant"] not in VARIANTS:
+            errors.append(f"{r['_where']}: 알 수 없는 variant '{r['variant']}'")
         if r["source"] and not r["source"].startswith(("http://", "https://")):
             errors.append(f"{r['_where']}: 출처가 URL 이 아님 → {r['source'][:40]}")
-        key = (r["org"], r["question"])
-        if key in seen:
-            errors.append(f"{r['_where']}: 중복 질문 (첫 등장 {seen[key]}) → {r['question']}")
-        seen[key] = r["_where"]
+        if r["id"] in ids:
+            errors.append(f"{r['_where']}: id 중복 (첫 등장 {ids[r['id']]}) → {r['id']}")
+        ids[r["id"]] = r["_where"]
+        groups[r["parent_id"]].append(r)
+    for pid, g in groups.items():
+        originals = [r for r in g if r["variant"] == "original"]
+        if len(originals) != 1:
+            errors.append(f"원문 {pid}: original 변형이 {len(originals)}개 (1개여야 함)")
+        for k in ("org", "answer", "source", "original_question"):
+            if len({r[k] for r in g}) > 1:
+                errors.append(f"원문 {pid}: 변형끼리 '{k}' 값이 다름")
     return errors
 
 
@@ -80,41 +102,37 @@ def main():
     rows = read_xlsx(src) if src.suffix.lower() in (".xlsx", ".xlsm") else read_csv(src)
     errors = validate(rows)
     if errors:
-        print("❌ 데이터 오류:\n  " + "\n  ".join(errors))
+        print("❌ 데이터 오류:\n  " + "\n  ".join(errors[:50]))
         sys.exit(1)
 
     existing = {}
     if OUT_FILES[0].exists():
         for line in open(OUT_FILES[0], encoding="utf-8"):
             d = json.loads(line)
-            existing[(d["org"], d["question"])] = d
-    next_id = max((int(d["id"]) for d in existing.values()), default=-1) + 1
+            existing[d["id"]] = d
 
     out, to_embed, stats = [], [], {"new": 0, "changed": 0, "same": 0}
     for r in rows:
         r = {k: v for k, v in r.items() if not k.startswith("_")}
         r["embed_text"] = embed_text(r)
-        prev = existing.pop((r["org"], r["question"]), None)
-        if prev:
-            r["id"] = prev["id"]
-            if prev["embed_text"] == r["embed_text"] and not args.reembed_all:
-                r["embedding"] = prev["embedding"]
-                stats["same"] += 1
-            else:
-                to_embed.append(r)
-                stats["changed"] += 1
+        prev = existing.pop(r["id"], None)
+        if prev and prev.get("embed_text") == r["embed_text"] and not args.reembed_all:
+            r["embedding"] = prev["embedding"]
+            stats["same"] += 1
         else:
-            r["id"] = f"{next_id:03d}"
-            next_id += 1
             to_embed.append(r)
-            stats["new"] += 1
+            stats["changed" if prev else "new"] += 1
         out.append(r)
 
-    print(f"총 {len(out)}건: 신규 {stats['new']}, 변경 {stats['changed']}, 유지 {stats['same']}, 삭제 {len(existing)}")
-    for d in existing.values():
+    parents = {r["parent_id"] for r in out}
+    print(f"원문 {len(parents)}건 / 변형 {len(out)}행: 신규 {stats['new']}, 변경 {stats['changed']}, "
+          f"유지 {stats['same']}, 삭제 {len(existing)}")
+    for d in list(existing.values())[:20]:
         print(f"  삭제됨: {d['id']} [{d['org']}] {d['question']}")
-    for r in to_embed:
+    for r in to_embed[:20]:
         print(f"  임베딩 대상: {r['id']} [{r['org']}] {r['question']}")
+    if len(to_embed) > 20:
+        print(f"  … 외 {len(to_embed) - 20}행")
     if args.dry_run:
         print("(dry-run: 파일을 쓰지 않음)")
         return
@@ -126,10 +144,8 @@ def main():
         for r, v in zip(to_embed, vecs):
             r["embedding"] = [round(float(x), 7) for x in v]
 
-    out.sort(key=lambda r: r["id"])
-    keys = ["id", "sheet", "org_type", "org", "question", "answer", "source", "embed_text", "embedding"]
-    payload = "".join(json.dumps({k: r[k] for k in keys}, ensure_ascii=False) + "\n" for r in out)
     assert all(len(r["embedding"]) == DIM for r in out)
+    payload = "".join(json.dumps({k: r[k] for k in KEYS}, ensure_ascii=False) + "\n" for r in out)
     for f in OUT_FILES:
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_text(payload, encoding="utf-8")

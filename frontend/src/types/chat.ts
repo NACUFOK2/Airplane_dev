@@ -1,7 +1,7 @@
 export interface Organization {
   code: string;
   name: string;
-  type: "여행사" | "항공사";
+  type: "항공사" | "여행사" | "숙박업체";
   brandColor: string;
   qaCount: number;
   suggestedQuestions: string[];

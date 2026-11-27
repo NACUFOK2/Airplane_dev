@@ -8,7 +8,7 @@ interface Props {
 export default function Welcome({ title, description, suggestions, onPick }: Props) {
   return (
     <section className="welcome">
-      <div className="welcome__emoji" aria-hidden>🛫</div>
+      <div className="welcome__emoji" aria-hidden>✈️</div>
       <h1 className="welcome__title">
         {title}
         <br />

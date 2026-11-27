@@ -11,7 +11,7 @@ from sentence_transformers import SentenceTransformer
 
 ROOT = Path(__file__).resolve().parent.parent
 MODEL = "dragonkue/multilingual-e5-small-ko-v2"
-rows = [json.loads(l) for l in open(ROOT / "data/qa_embeddings.jsonl", encoding="utf-8")]
+rows = [json.loads(l) for l in open(ROOT / "data/v1/qa_embeddings.jsonl", encoding="utf-8")]
 ids = [r["id"] for r in rows]
 evalset = [json.loads(l) for l in open(ROOT / "eval/eval_set.jsonl", encoding="utf-8")]
 ood = [l.strip() for l in open(ROOT / "eval/ood_set.txt", encoding="utf-8") if l.strip()]
