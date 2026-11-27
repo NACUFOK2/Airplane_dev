@@ -2,12 +2,14 @@
   "name": "Airplane QnA (Java 21 + Node 20)",
   "build": { "dockerfile": "Dockerfile" },
   "features": {
-    "ghcr.io/devcontainers/features/node:1": { "version": "20" }
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" },
+    "ghcr.io/devcontainers/features/python:1": { "version": "3.11" }
   },
-  "forwardPorts": [8080, 3000],
+  "forwardPorts": [8080, 3000, 8001],
   "portsAttributes": {
     "8080": { "label": "Spring Boot API" },
-    "3000": { "label": "Next.js Web" }
+    "3000": { "label": "Next.js Web" },
+    "8001": { "label": "Embedding Service" }
   },
   // 시크릿은 호스트의 환경변수에서만 주입 (파일로 커밋 금지)
   "remoteEnv": {
@@ -21,7 +23,8 @@
         "vmware.vscode-spring-boot",
         "vscjava.vscode-spring-boot-dashboard",
         "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode"
+        "esbenp.prettier-vscode",
+        "ms-python.python"
       ]
     }
   }
