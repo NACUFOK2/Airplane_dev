@@ -8,7 +8,7 @@ from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-rows = [json.loads(l) for l in open(ROOT / "data/qa_embeddings.jsonl", encoding="utf-8")]
+rows = [json.loads(l) for l in open(ROOT / "data/v1/qa_embeddings.jsonl", encoding="utf-8")]
 
 # 질문 문장 키워드 규칙 (위에서부터 우선 적용)
 RULES = [

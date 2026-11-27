@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -19,6 +20,11 @@ public class GlobalExceptionHandler {
         String msg = e.getBindingResult().getFieldErrors().stream()
                 .findFirst().map(f -> f.getDefaultMessage()).orElse("잘못된 요청입니다.");
         return ResponseEntity.badRequest().body(new ApiError("INVALID_REQUEST", msg));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> handleUnreadable(HttpMessageNotReadableException e) {
+        return ResponseEntity.badRequest().body(new ApiError("INVALID_REQUEST", "요청 형식이 올바르지 않아요."));
     }
 
     @ExceptionHandler(OrganizationNotFoundException.class)

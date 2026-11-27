@@ -52,10 +52,22 @@ public class RetrievalService {
         boolean hasPrev = previousQuestion != null && !previousQuestion.isBlank();
         String query = hasPrev && isShortFollowup(question) ? previousQuestion + " " + question : question;
         String orgFilter = resolveOrgFilter(question, selectedOrg);
+        if (orgFilter == null) {
+            // 지원 기관 없이 '자료에 없는 기관'만 언급 → 다른 기관 자료로 대신 답하지 않는다
+            String unsupported = detectUnsupported(question);
+            if (unsupported != null) return new RetrievalResult(List.of(), "hybrid", true, null, Double.NaN, unsupported);
+        }
         if (orgFilter == null && hasPrev && cfg.followupCarryOrg() && cfg.autoOrgFilter()) {
             orgFilter = organizationRepository.detectInText(previousQuestion).map(Organization::name).orElse(null);
         }
         return search(query, orgFilter);
+    }
+
+    String detectUnsupported(String question) {
+        String compact = question.replace(" ", "").toUpperCase(java.util.Locale.ROOT);
+        return cfg.unsupportedNames().stream()
+                .filter(n -> compact.contains(n.replace(" ", "").toUpperCase(java.util.Locale.ROOT)))
+                .findFirst().orElse(null);
     }
 
     boolean isShortFollowup(String question) {

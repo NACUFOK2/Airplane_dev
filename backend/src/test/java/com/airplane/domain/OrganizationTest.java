@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 class OrganizationTest {
 
-    private final Organization ke = new Organization("koreanair", "대한항공", "항공사", "#000", List.of("koreanair.com"));
+    private final Organization ke = new Organization("koreanair", "대한항공", "항공사", "#000", List.of("koreanair.com"), List.of());
 
     @Test
     void acceptsExactAndSubdomains() {
