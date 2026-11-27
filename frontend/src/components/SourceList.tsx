@@ -9,7 +9,8 @@ export default function SourceList({ sources }: { sources: Source[] }) {
   return (
     <div className="sources">
       <button className="sources__toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        참고한 Q&A {sources.length}개
+        참고한 자료 {sources.length}개
+        {sources.some((s) => !s.official) && <span className="sources__warn">· 비공식 출처 포함</span>}
         <span className={`chevron ${open ? "chevron--up" : ""}`}>›</span>
       </button>
       {open && (
@@ -20,6 +21,9 @@ export default function SourceList({ sources }: { sources: Source[] }) {
                 <span className="source__num">{s.index}</span>
                 <span className="source__airline">{s.org}</span>
                 <span className="source__tag">{s.orgType}</span>
+                <span className={`trust ${s.official ? "trust--official" : "trust--unofficial"}`}>
+                  {s.official ? "공식 출처" : "참고 출처"}
+                </span>
                 {s.score > 0 && <span className="source__score">유사도 {s.score.toFixed(2)}</span>}
               </div>
               <p className="source__title">{s.question}</p>

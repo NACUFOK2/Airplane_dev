@@ -11,14 +11,24 @@ public record RagProperties(
         Retrieval retrieval,
         Embedding embedding,
         Llm llm,
+        Feedback feedback,
         List<OrganizationDef> organizations) {
 
-    public record Retrieval(int topK, int rrfK, int candidatePool, double denseMinScore, boolean autoOrgFilter) {}
+    public record Retrieval(int topK, int rrfK, int candidatePool, double denseMinScore, boolean autoOrgFilter,
+                            boolean followupCarryOrg, int followupShortChars, List<String> unsupportedNames) {
+
+        public Retrieval {
+            unsupportedNames = unsupportedNames == null ? List.of() : List.copyOf(unsupportedNames);
+        }
+    }
 
     public record Embedding(String baseUrl, int timeoutMs, int dimension) {}
+
+    public record Feedback(boolean enabled, String logDir) {}
 
     /** provider: auto(키 있으면 claude) | claude | extractive */
     public record Llm(String provider, String model, long maxTokens, int historyTurns) {}
 
-    public record OrganizationDef(String code, String name, String type, String brandColor) {}
+    public record OrganizationDef(String code, String name, String type, String brandColor,
+                                  List<String> officialDomains, List<String> aliases) {}
 }

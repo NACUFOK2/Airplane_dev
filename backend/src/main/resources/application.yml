@@ -4,6 +4,9 @@ server:
 spring:
   application:
     name: airplane-backend
+  web:
+    locale: ko_KR            # 검증 기본 메시지를 한국어로
+    locale-resolver: fixed
 
 # 시크릿(ANTHROPIC_API_KEY)은 이 파일에 넣지 말고 환경변수로만 주입한다.
 # 각 값의 선정 근거: docs/RAG_PARAMETERS.md
@@ -13,16 +16,25 @@ rag:
     - http://localhost:3000
 
   retrieval:
-    top-k: 4                 # LLM 에 넘길 문서 수 (평가셋 정답은 전부 2위 이내 → 2배 여유)
+    top-k: 4                 # LLM 에 넘길 원문 수 (v2 평가셋 정답은 전부 2위 이내 → 2배 여유)
     rrf-k: 60                # RRF 상수 (k=20/60 동률, 표준값 60 이 순위 노이즈에 더 둔감)
-    candidate-pool: 50       # 검색기별 융합 후보 수 (현재 83건이라 사실상 전체, 데이터 증가 대비 상한)
-    dense-min-score: 0.50    # dense top-1 코사인이 이보다 낮으면 '범위 밖 질문'으로 LLM 호출 없이 안내
+    candidate-pool: 200      # 검색기별 융합 후보 수 (현재 원문 178건이라 전체가 후보. 데이터 증가 시 연산량 상한)
+    dense-min-score: 0.60    # dense top-1 코사인(질문 변형 중 최댓값)이 이보다 낮으면 '범위 밖'으로 LLM 호출 없이 안내
     auto-org-filter: true    # '전체' 선택 시 질문 속 기관명(예: 대한항공)으로 자동 필터
+    followup-carry-org: true # 후속 질문에 기관명이 없으면 직전 질문의 기관을 이어받음
+    followup-short-chars: 8  # 공백 제외 8자 미만 후속 질문("기내는요?")은 직전 질문과 합쳐 검색
+    # 자료에 없는 여행 관련 기관. 지원 기관명 없이 이 이름만 나오면 다른 기관 자료로 대신 답하지 않고 안내한다.
+    # (여행 주제라 유사도 임계값으로는 걸러지지 않음: 에어비앤비 0.713, KTX 0.676, 아시아나 0.622)
+    unsupported-names: [아시아나, 진에어, 티웨이, 에어부산, 에어서울, 이스타, 에어프레미아, 에어비앤비, 인터파크, 마이리얼트립, 익스피디아, 호텔스닷컴, 클룩, KTX, 코레일, SRT]
 
   embedding:
     base-url: http://127.0.0.1:8001
     timeout-ms: 3000         # 첫 호출 워밍업 포함 여유. 초과 시 BM25 단독으로 폴백
     dimension: 384
+
+  feedback:
+    enabled: true
+    log-dir: chat-logs       # gitignore 대상. 개인정보는 마스킹 후 저장 (PrivacyMasker)
 
   llm:
     provider: auto           # auto(키 있으면 claude) | claude | extractive
@@ -30,14 +42,33 @@ rag:
     max-tokens: 2000         # 답변은 짧은 FAQ 요약 → 2000 이면 잘림 없이 충분
     history-turns: 3         # 최근 3왕복만 전달 (후속 질문 맥락 유지 + 토큰 절약)
 
+  # 기관 목록. official-domains: 출처 URL 이 이 도메인(하위 도메인 포함)이면 '공식 출처'로 표시
+  #            aliases: 질문 속 기관명 자동 감지에 쓰는 다른 이름 (예: "델타", "ANA")
   organizations:
-    - { code: hanatour,     name: 하나투어,   type: 여행사, brand-color: "#5E2BB8" }
-    - { code: modetour,     name: 모두투어,   type: 여행사, brand-color: "#0064FF" }
-    - { code: ybtour,       name: 노랑풍선,   type: 여행사, brand-color: "#FFB800" }
-    - { code: verygoodtour, name: 참좋은여행, type: 여행사, brand-color: "#E5007E" }
-    - { code: koreanair,    name: 대한항공,   type: 항공사, brand-color: "#00256C" }
-    - { code: jejuair,      name: 제주항공,   type: 항공사, brand-color: "#FF5000" }
-    - { code: aerok,        name: 에어로케이, type: 항공사, brand-color: "#1D1D1B" }
+    # 여행사
+    - { code: hanatour,       name: 하나투어,         type: 여행사,   brand-color: "#5E2BB8", official-domains: [hanatour.com] }
+    - { code: modetour,       name: 모두투어,         type: 여행사,   brand-color: "#0064FF", official-domains: [modetour.co.kr] }
+    - { code: ybtour,         name: 노랑풍선,         type: 여행사,   brand-color: "#FFB800", official-domains: [ybtour.co.kr] }
+    - { code: verygoodtour,   name: 참좋은여행,       type: 여행사,   brand-color: "#E5007E", official-domains: [verygoodtour.com] }
+    # 항공사 (국내)
+    - { code: koreanair,      name: 대한항공,         type: 항공사,   brand-color: "#00256C", official-domains: [koreanair.com] }
+    - { code: jejuair,        name: 제주항공,         type: 항공사,   brand-color: "#FF5000", official-domains: [jejuair.net] }
+    - { code: aerok,          name: 에어로케이,       type: 항공사,   brand-color: "#1D1D1B", official-domains: [aerok.com] }
+    # 항공사 (해외)
+    - { code: delta,          name: 델타항공,         type: 항공사,   brand-color: "#C01933", official-domains: [delta.com], aliases: [델타] }
+    - { code: united,         name: 유나이티드항공,   type: 항공사,   brand-color: "#0033A0", official-domains: [united.com], aliases: [유나이티드] }
+    - { code: emirates,       name: 에미레이트항공,   type: 항공사,   brand-color: "#D71921", official-domains: [emirates.com], aliases: [에미레이트, 에미레이츠] }
+    - { code: singaporeair,   name: 싱가포르항공,     type: 항공사,   brand-color: "#1D2D5C", official-domains: [singaporeair.com] }
+    - { code: cathay,         name: 캐세이퍼시픽,     type: 항공사,   brand-color: "#006564", official-domains: [cathaypacific.com], aliases: [캐세이] }
+    - { code: lufthansa,      name: 루프트한자,       type: 항공사,   brand-color: "#05164D", official-domains: [lufthansa.com] }
+    - { code: ana,            name: ANA(전일본공수),  type: 항공사,   brand-color: "#13448F", official-domains: [ana.co.jp], aliases: [ANA, 전일본공수] }
+    # 숙박업체
+    - { code: agoda,          name: 아고다,           type: 숙박업체, brand-color: "#5392F9", official-domains: [agoda.com] }
+    - { code: hotelscombined, name: 호텔스컴바인,     type: 숙박업체, brand-color: "#FF6F00", official-domains: [hotelscombined.co.kr, hotelscombined.com] }
+    - { code: tripcom,        name: 트립닷컴,         type: 숙박업체, brand-color: "#287DFA", official-domains: [trip.com], aliases: [트립닷컴, 트립] }
+    - { code: booking,        name: 부킹닷컴,         type: 숙박업체, brand-color: "#003580", official-domains: [booking.com], aliases: [부킹] }
+    - { code: yanolja,        name: 야놀자,           type: 숙박업체, brand-color: "#FF3478", official-domains: [yanolja.com] }
+    - { code: yeogi,          name: 여기어때,         type: 숙박업체, brand-color: "#E8003D", official-domains: [yeogi.com, goodchoice.kr] }
 
 logging:
   level:
