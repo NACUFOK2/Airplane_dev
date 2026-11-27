@@ -1,10 +1,11 @@
 interface Props {
   title: string;
+  description: string;
   suggestions: string[];
   onPick: (q: string) => void;
 }
 
-export default function Welcome({ title, suggestions, onPick }: Props) {
+export default function Welcome({ title, description, suggestions, onPick }: Props) {
   return (
     <section className="welcome">
       <div className="welcome__emoji" aria-hidden>🛫</div>
@@ -13,7 +14,7 @@ export default function Welcome({ title, suggestions, onPick }: Props) {
         <br />
         무엇이 궁금하세요?
       </h1>
-      <p className="welcome__desc">수하물, 예약 변경, 체크인 규정을 찾아서 알려드릴게요.</p>
+      <p className="welcome__desc">{description}</p>
       <div className="card">
         <p className="card__label">이런 걸 많이 물어봐요</p>
         <ul className="list">

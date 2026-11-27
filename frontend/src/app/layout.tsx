@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "항공 QnA",
-  description: "여러 항공사 규정을 검색해 답해주는 RAG 챗봇",
+  title: "여행 QnA",
+  description: "여행사·항공사 Q&A를 검색해 답해주는 RAG 챗봇",
 };
 
 export const viewport: Viewport = {

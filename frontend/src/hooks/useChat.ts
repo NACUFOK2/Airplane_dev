@@ -6,7 +6,7 @@ import type { ChatMessage } from "@/types/chat";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-export function useChat(airlineCode: string) {
+export function useChat(orgCode: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -18,10 +18,10 @@ export function useChat(airlineCode: string) {
       setMessages((prev) => [...prev, { id: uid(), role: "user", content: q }]);
       setLoading(true);
       try {
-        const res = await api.ask(q, airlineCode, history);
+        const res = await api.ask(q, orgCode, history);
         setMessages((prev) => [
           ...prev,
-          { id: uid(), role: "assistant", content: res.answer, sources: res.sources, mode: res.mode },
+          { id: uid(), role: "assistant", content: res.answer, sources: res.sources, mode: res.mode, retrieval: res.retrieval },
         ]);
       } catch (e) {
         setMessages((prev) => [
@@ -32,7 +32,7 @@ export function useChat(airlineCode: string) {
         setLoading(false);
       }
     },
-    [airlineCode, loading, messages],
+    [orgCode, loading, messages],
   );
 
   const reset = useCallback(() => setMessages([]), []);
