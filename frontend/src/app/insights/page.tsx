@@ -53,9 +53,9 @@ export default function InsightsPage() {
               <div className="stat"><p className="stat__label">👍 / 👎</p><p className="stat__value">{data.upCount} / {data.downCount}</p></div>
               <div className="stat"><p className="stat__label">범위 밖 질문</p><p className="stat__value">{data.outOfScopeCount}</p></div>
             </div>
-            <CountList title="답하지 못한 질문" desc="자료가 없어 답을 못 했어요. Q&A 데이터에 추가할 후보예요." items={data.topOutOfScopeQuestions} />
+            <CountList title="답하지 못한 질문" desc="자료가 없어 답을 못 했어요. 문답 데이터에 추가할 후보예요." items={data.topOutOfScopeQuestions} />
             <CountList title="👎 받은 질문" desc="검색은 됐지만 답변이 부족했던 질문이에요." items={data.topDownvotedQuestions} />
-            <CountList title="👎 답변의 1순위 근거 Q&A" desc="이 id 의 Q&A 내용을 먼저 점검해 보세요." items={data.topDownvotedSourceIds} />
+            <CountList title="👎 답변의 1순위 근거 문답" desc="이 번호의 문답 내용을 먼저 점검해 보세요." items={data.topDownvotedSourceIds} />
             <p className="notice">🔒 질문은 개인정보를 가린 뒤 이 PC 의 chat-logs/ 에만 저장돼요.</p>
           </>
         )}
