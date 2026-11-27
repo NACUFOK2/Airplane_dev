@@ -116,3 +116,8 @@ Thumbs.db
 # --- Claude Code 로컬 설정 ----------------------------------------------
 .claude/settings.local.json
 .claude/
+
+# --- Python ---
+.venv/
+__pycache__/
+*.pyc

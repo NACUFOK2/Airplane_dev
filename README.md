@@ -1,10 +1,13 @@
-# ✈️ Airplane QnA — 항공사 RAG 챗봇
+# ✈️ Airplane QnA — 여행사·항공사 RAG 챗봇
 
-여러 항공사의 규정(수하물, 예약/변경, 체크인 등)을 검색해 답변하는 로컬 RAG 챗봇 서비스입니다.
+여행사 4곳(하나투어·모두투어·노랑풍선·참좋은여행)과 항공사 3곳(대한항공·제주항공·에어로케이)의
+Q&A 83건을 하이브리드 검색(임베딩 + BM25)해 답변하는 로컬 RAG 챗봇입니다.
 
 - **Backend**: Java 21 · Spring Boot (MVC 레이어드 아키텍처) · `backend/`
 - **Frontend**: Next.js (App Router) · 토스 스타일 UI · `frontend/`
-- **Dev 환경**: `.devcontainer/` (JDK 21 + Maven + Node 20 일괄 구성)
+- **Embedding**: Python FastAPI · `dragonkue/multilingual-e5-small-ko-v2` · `embedding-service/`
+- **Dev 환경**: `.devcontainer/` (JDK 21 + Maven + Node 20 + Python 3.11 일괄 구성)
+- **파라미터 설계 근거**: [docs/RAG_PARAMETERS.md](docs/RAG_PARAMETERS.md)
 
 > 배포하지 않으며 로컬에서만 실행합니다. 자세한 실행 방법은 아래 섹션 참고.
 
@@ -29,6 +32,9 @@ VSCode 에서 폴더를 열고 **Reopen in Container** → JDK 21 / Maven / Node
 
 ### 2) 직접 실행
 ```bash
+cd embedding-service && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && .venv/bin/uvicorn app:app --host 127.0.0.1 --port 8001
+```
+```bash
 cd backend && mvn spring-boot:run
 ```
 ```bash
@@ -36,7 +42,8 @@ cd frontend && npm install && npm run dev
 ```
 
 - 웹: http://localhost:3000 (Next.js 가 `/api/*` 를 http://localhost:8080 으로 프록시)
-- API: `GET /api/airlines`, `POST /api/chat` `{ "question": "...", "airlineCode": "KE|OZ|7C|LJ|TW|ALL" }`
+- API: `GET /api/organizations`, `POST /api/chat` `{ "question": "...", "orgCode": "hanatour|modetour|ybtour|verygoodtour|koreanair|jejuair|aerok|ALL" }`
+- 임베딩 서비스가 꺼져 있으면 BM25 키워드 검색만으로 자동 전환됩니다.
 
 ### Claude 연결 (선택)
 `.env.example` 을 `.env` 로 복사해 `ANTHROPIC_API_KEY` 를 채우거나 셸에서 export 하세요.
@@ -45,20 +52,21 @@ cd frontend && npm install && npm run dev
 ## 아키텍처
 
 ```
-[Next.js UI] ──/api──▶ [Controller] ─▶ [Service: Chat / Retrieval / Airline]
-                                          │             │
-                                   [LlmClient]   [Repository: Knowledge / Airline]
-                               Claude | Extractive      │
-                                                 knowledge/*.md (항공사별 규정)
+[Next.js UI] ──/api──▶ [Controller] ─▶ [Service: Chat / Retrieval / Organization]
+                                          │            │              │
+                                   [LlmClient]   [EmbeddingClient]  [Repository: Qa / Organization]
+                               Claude | Extractive    │                     │
+                                          embedding-service:8001   data/qa_embeddings.jsonl (83건, 384차원)
 ```
 
 | 레이어 | 패키지 | 역할 |
 |---|---|---|
 | Controller | `controller` | REST 엔드포인트, 요청 검증 |
 | Service | `service` | RAG 파이프라인 (검색 → 문맥 구성 → 생성) |
-| Repository | `repository` | 항공사/규정 문서 적재 |
+| Repository | `repository` | Q&A·임베딩 / 기관 정보 적재 |
+| Client | `client` | 질의 임베딩 사이드카 호출 (실패 시 BM25 폴백) |
 | Domain / DTO | `domain`, `dto` | 내부 모델 / API 계약 |
-| RAG | `rag` | 한글 바이그램 분석기 + BM25 인덱스 |
+| RAG | `rag` | BM25 · Dense(코사인) 인덱스 · RRF 융합 |
 | LLM | `llm` | Claude(`claude-opus-5-5`) 또는 추출형 답변기 |
 
-> `backend/src/main/resources/knowledge/` 의 항공사 규정은 **데모용 샘플**입니다. 실제 규정으로 교체해 사용하세요.
+> Q&A 데이터는 각 기관 공식 페이지·정리 글에서 수집한 것으로 시점이 지나면 달라질 수 있습니다. 답변의 '원문 보기' 링크로 최신 규정을 확인하세요.

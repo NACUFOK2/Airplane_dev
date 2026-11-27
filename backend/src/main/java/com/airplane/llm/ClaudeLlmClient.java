@@ -2,7 +2,7 @@ package com.airplane.llm;
 
 import com.airplane.config.RagProperties;
 import com.airplane.domain.ChatTurn;
-import com.airplane.domain.RetrievedChunk;
+import com.airplane.domain.RetrievedDocument;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.core.JsonValue;
 import com.anthropic.errors.AnthropicServiceException;
@@ -31,7 +31,7 @@ public class ClaudeLlmClient implements LlmClient {
     }
 
     @Override
-    public String generate(String question, List<RetrievedChunk> context, List<ChatTurn> history, String airlineLabel) {
+    public String generate(String question, List<RetrievedDocument> context, List<ChatTurn> history, String scopeLabel) {
         MessageCreateParams.Builder builder = MessageCreateParams.builder()
                 .model(config.model())
                 .maxTokens(config.maxTokens())
@@ -45,7 +45,7 @@ public class ClaudeLlmClient implements LlmClient {
             if (turn.role() == ChatTurn.Role.USER) builder.addUserMessage(turn.content());
             else builder.addAssistantMessage(turn.content());
         }
-        builder.addUserMessage(PromptBuilder.userMessage(question, context, airlineLabel));
+        builder.addUserMessage(PromptBuilder.userMessage(question, context, scopeLabel));
 
         try {
             Message response = client.messages().create(builder.build());
@@ -57,13 +57,13 @@ public class ClaudeLlmClient implements LlmClient {
                     .map(TextBlock::text)
                     .collect(Collectors.joining("\n"))
                     .strip();
-            return text.isEmpty() ? fallback.generate(question, context, history, airlineLabel) : text;
+            return text.isEmpty() ? fallback.generate(question, context, history, scopeLabel) : text;
         } catch (RateLimitException e) {
             log.warn("Claude rate limit → 추출형 답변으로 대체");
-            return fallback.generate(question, context, history, airlineLabel);
+            return fallback.generate(question, context, history, scopeLabel);
         } catch (AnthropicServiceException e) {
             log.error("Claude API 오류 (status={}) → 추출형 답변으로 대체", e.statusCode());
-            return fallback.generate(question, context, history, airlineLabel);
+            return fallback.generate(question, context, history, scopeLabel);
         }
     }
 

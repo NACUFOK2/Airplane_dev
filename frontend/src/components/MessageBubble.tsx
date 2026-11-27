@@ -18,6 +18,9 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
           <RichText text={message.content} />
         </div>
         {message.sources && <SourceList sources={message.sources} />}
+        {message.retrieval === "bm25" && (
+          <span className="mode-badge">임베딩 서버 미연결 · 키워드 검색 결과예요</span>
+        )}
       </div>
     </div>
   );
