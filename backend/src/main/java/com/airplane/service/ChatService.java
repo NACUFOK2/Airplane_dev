@@ -1,52 +1,65 @@
 package com.airplane.service;
 
 import com.airplane.config.RagProperties;
-import com.airplane.domain.Airline;
 import com.airplane.domain.ChatTurn;
-import com.airplane.domain.RetrievedChunk;
+import com.airplane.domain.Organization;
+import com.airplane.domain.RetrievalResult;
+import com.airplane.domain.RetrievedDocument;
 import com.airplane.dto.ChatRequest;
 import com.airplane.dto.ChatResponse;
 import com.airplane.dto.SourceResponse;
 import com.airplane.llm.LlmClient;
-import com.airplane.repository.AirlineRepository;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-/** RAG 파이프라인: 검색(Retrieve) → 문맥 구성(Augment) → 답변 생성(Generate). */
+/** RAG 파이프라인: 검색(Retrieve) → 범위 판정 → 문맥 구성(Augment) → 답변 생성(Generate). */
 @Service
 public class ChatService {
 
+    static final String OUT_OF_SCOPE_ANSWER = """
+            이 질문은 제가 가진 여행사·항공사 Q&A 자료 범위 밖이라 정확히 답하기 어려워요.
+            지금은 하나투어, 모두투어, 노랑풍선, 참좋은여행, 대한항공, 제주항공, 에어로케이의 \
+            예약·취소·환불, 수하물, 체크인 관련 질문에 답할 수 있어요.""";
+
     private final RetrievalService retrievalService;
-    private final AirlineService airlineService;
-    private final AirlineRepository airlineRepository;
+    private final OrganizationService organizationService;
     private final LlmClient llmClient;
     private final RagProperties properties;
 
-    public ChatService(RetrievalService retrievalService, AirlineService airlineService,
-                       AirlineRepository airlineRepository, LlmClient llmClient, RagProperties properties) {
+    public ChatService(RetrievalService retrievalService, OrganizationService organizationService,
+                       LlmClient llmClient, RagProperties properties) {
         this.retrievalService = retrievalService;
-        this.airlineService = airlineService;
-        this.airlineRepository = airlineRepository;
+        this.organizationService = organizationService;
         this.llmClient = llmClient;
         this.properties = properties;
     }
 
     public ChatResponse ask(ChatRequest request) {
-        String code = request.airlineCode() == null ? "ALL" : request.airlineCode();
-        String airlineLabel = "ALL".equals(code) ? "전체 항공사" : airlineService.getByCode(code).name();
+        String code = request.orgCode() == null ? "ALL" : request.orgCode();
+        Organization selected = "ALL".equals(code) ? null : organizationService.getByCode(code);
 
-        List<RetrievedChunk> context = retrievalService.retrieve(request.question(), code);
-        String answer = llmClient.generate(request.question(), context, toHistory(request), airlineLabel);
+        RetrievalResult result = retrievalService.retrieve(request.question(), selected);
 
-        List<SourceResponse> sources = new ArrayList<>();
-        for (int i = 0; i < context.size(); i++) {
-            RetrievedChunk r = context.get(i);
-            String name = airlineRepository.findByCode(r.chunk().airlineCode()).map(Airline::name).orElse(r.chunk().airlineCode());
-            sources.add(new SourceResponse(i + 1, r.chunk().airlineCode(), name, r.chunk().category(),
-                    r.chunk().title(), snippet(r.chunk().content()), Math.round(r.score() * 100) / 100.0));
+        if (result.outOfScope() || result.documents().isEmpty()) {
+            // 근거 없는 상태로 LLM 을 부르지 않는다: 환각 방지 + 비용 절감
+            return new ChatResponse(OUT_OF_SCOPE_ANSWER, "out_of_scope", result.mode(), List.of());
         }
-        return new ChatResponse(answer, llmClient.mode(), sources);
+
+        String scopeLabel = result.orgFilter() != null ? result.orgFilter() : "전체 기관";
+        String answer = llmClient.generate(request.question(), result.documents(), toHistory(request), scopeLabel);
+        return new ChatResponse(answer, llmClient.mode(), result.mode(), toSources(result.documents()));
+    }
+
+    private static List<SourceResponse> toSources(List<RetrievedDocument> docs) {
+        List<SourceResponse> sources = new ArrayList<>();
+        for (int i = 0; i < docs.size(); i++) {
+            RetrievedDocument r = docs.get(i);
+            double score = Double.isNaN(r.denseScore()) ? 0 : Math.round(r.denseScore() * 1000) / 1000.0;
+            sources.add(new SourceResponse(i + 1, r.doc().id(), r.doc().org(), r.doc().orgType(), r.doc().question(),
+                    snippet(r.doc().answer()), r.doc().source(), score));
+        }
+        return sources;
     }
 
     private List<ChatTurn> toHistory(ChatRequest request) {
@@ -71,6 +84,6 @@ public class ChatService {
 
     private static String snippet(String content) {
         String flat = content.replaceAll("\\s+", " ").strip();
-        return flat.length() > 140 ? flat.substring(0, 140) + "…" : flat;
+        return flat.length() > 120 ? flat.substring(0, 120) + "…" : flat;
     }
 }
