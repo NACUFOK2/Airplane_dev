@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class Bm25IndexTest {
 
     private static QaDocument doc(String id, String org, String q, String a) {
-        return new QaDocument(id, "항공사", org, q, a, "", new float[0]);
+        return new QaDocument(id, "항공사", org, q, a, "", true, new float[0]);
     }
 
     private final List<QaDocument> docs = List.of(

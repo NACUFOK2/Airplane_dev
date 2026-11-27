@@ -20,10 +20,10 @@ class RetrievalServiceTest {
             new RagProperties.Retrieval(4, 60, 50, 0.50, true),
             new RagProperties.Embedding("http://unused", 1000, 384),
             new RagProperties.Llm("extractive", "m", 100, 3),
-            List.of(new RagProperties.OrganizationDef("koreanair", "대한항공", "항공사", "#000"),
-                    new RagProperties.OrganizationDef("jejuair", "제주항공", "항공사", "#000")));
-    private final QaRepository repo = new QaRepository(props, new ObjectMapper());
+            List.of(new RagProperties.OrganizationDef("koreanair", "대한항공", "항공사", "#000", List.of("koreanair.com")),
+                    new RagProperties.OrganizationDef("jejuair", "제주항공", "항공사", "#000", List.of("jejuair.net"))));
     private final OrganizationRepository orgs = new OrganizationRepository(props);
+    private final QaRepository repo = new QaRepository(props, new ObjectMapper(), orgs);
 
     private RetrievalService service(EmbeddingClient client) {
         return new RetrievalService(repo, client, orgs, props);

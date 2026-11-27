@@ -20,5 +20,5 @@ public record RagProperties(
     /** provider: auto(키 있으면 claude) | claude | extractive */
     public record Llm(String provider, String model, long maxTokens, int historyTurns) {}
 
-    public record OrganizationDef(String code, String name, String type, String brandColor) {}
+    public record OrganizationDef(String code, String name, String type, String brandColor, List<String> officialDomains) {}
 }

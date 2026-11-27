@@ -57,7 +57,7 @@ public class ChatService {
             RetrievedDocument r = docs.get(i);
             double score = Double.isNaN(r.denseScore()) ? 0 : Math.round(r.denseScore() * 1000) / 1000.0;
             sources.add(new SourceResponse(i + 1, r.doc().id(), r.doc().org(), r.doc().orgType(), r.doc().question(),
-                    snippet(r.doc().answer()), r.doc().source(), score));
+                    snippet(r.doc().answer()), r.doc().source(), r.doc().official(), score));
         }
         return sources;
     }
