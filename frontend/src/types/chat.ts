@@ -1,25 +1,27 @@
-export interface Airline {
+export interface Organization {
   code: string;
   name: string;
-  nameEn: string;
+  type: "여행사" | "항공사";
   brandColor: string;
-  customerCenter: string;
+  qaCount: number;
   suggestedQuestions: string[];
 }
 
 export interface Source {
   index: number;
-  airlineCode: string;
-  airlineName: string;
-  category: string;
-  title: string;
+  id: string;
+  org: string;
+  orgType: string;
+  question: string;
   snippet: string;
+  url: string;
   score: number;
 }
 
 export interface ChatResponse {
   answer: string;
-  mode: "claude" | "extractive";
+  mode: "claude" | "extractive" | "out_of_scope";
+  retrieval: "hybrid" | "bm25";
   sources: Source[];
 }
 
@@ -29,5 +31,6 @@ export interface ChatMessage {
   content: string;
   sources?: Source[];
   mode?: ChatResponse["mode"];
+  retrieval?: ChatResponse["retrieval"];
   error?: boolean;
 }

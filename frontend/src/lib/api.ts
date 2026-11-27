@@ -1,4 +1,4 @@
-import type { Airline, ChatMessage, ChatResponse } from "@/types/chat";
+import type { ChatMessage, ChatResponse, Organization } from "@/types/chat";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -13,15 +13,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  airlines: () => request<Airline[]>("/api/airlines"),
-  ask: (question: string, airlineCode: string, history: ChatMessage[]) =>
+  organizations: () => request<Organization[]>("/api/organizations"),
+  ask: (question: string, orgCode: string, history: ChatMessage[]) =>
     request<ChatResponse>("/api/chat", {
       method: "POST",
       body: JSON.stringify({
         question,
-        airlineCode,
+        orgCode,
         history: history
-          .filter((m) => !m.error)
+          .filter((m) => !m.error && m.mode !== "out_of_scope")
           .slice(-6)
           .map((m) => ({ role: m.role, content: m.content })),
       }),

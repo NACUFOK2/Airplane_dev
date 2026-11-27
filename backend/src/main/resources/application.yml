@@ -6,22 +6,38 @@ spring:
     name: airplane-backend
 
 # 시크릿(ANTHROPIC_API_KEY)은 이 파일에 넣지 말고 환경변수로만 주입한다.
+# 각 값의 선정 근거: docs/RAG_PARAMETERS.md
 rag:
-  top-k: 4
-  min-score: 0.5
+  data-file: data/qa_embeddings.jsonl
   allowed-origins:
     - http://localhost:3000
+
+  retrieval:
+    top-k: 4                 # LLM 에 넘길 문서 수 (평가셋 정답은 전부 2위 이내 → 2배 여유)
+    rrf-k: 60                # RRF 상수 (k=20/60 동률, 표준값 60 이 순위 노이즈에 더 둔감)
+    candidate-pool: 50       # 검색기별 융합 후보 수 (현재 83건이라 사실상 전체, 데이터 증가 대비 상한)
+    dense-min-score: 0.50    # dense top-1 코사인이 이보다 낮으면 '범위 밖 질문'으로 LLM 호출 없이 안내
+    auto-org-filter: true    # '전체' 선택 시 질문 속 기관명(예: 대한항공)으로 자동 필터
+
+  embedding:
+    base-url: http://127.0.0.1:8001
+    timeout-ms: 3000         # 첫 호출 워밍업 포함 여유. 초과 시 BM25 단독으로 폴백
+    dimension: 384
+
   llm:
-    provider: auto
+    provider: auto           # auto(키 있으면 claude) | claude | extractive
     model: claude-opus-5-5
-    max-tokens: 4000
-    history-turns: 3
-  airlines:
-    - { code: KE, name: 대한항공,   name-en: Korean Air, brand-color: "#00256C", customer-center: 대한항공 공식 홈페이지 고객센터, file: korean-air.md }
-    - { code: OZ, name: 아시아나항공, name-en: Asiana Airlines, brand-color: "#C8102E", customer-center: 아시아나항공 공식 홈페이지 고객센터, file: asiana.md }
-    - { code: 7C, name: 제주항공,   name-en: Jeju Air, brand-color: "#FF5000", customer-center: 제주항공 공식 홈페이지 고객센터, file: jeju-air.md }
-    - { code: LJ, name: 진에어,     name-en: Jin Air, brand-color: "#6CC24A", customer-center: 진에어 공식 홈페이지 고객센터, file: jin-air.md }
-    - { code: TW, name: 티웨이항공,  name-en: T'way Air, brand-color: "#D6001C", customer-center: 티웨이항공 공식 홈페이지 고객센터, file: tway.md }
+    max-tokens: 2000         # 답변은 짧은 FAQ 요약 → 2000 이면 잘림 없이 충분
+    history-turns: 3         # 최근 3왕복만 전달 (후속 질문 맥락 유지 + 토큰 절약)
+
+  organizations:
+    - { code: hanatour,     name: 하나투어,   type: 여행사, brand-color: "#5E2BB8" }
+    - { code: modetour,     name: 모두투어,   type: 여행사, brand-color: "#0064FF" }
+    - { code: ybtour,       name: 노랑풍선,   type: 여행사, brand-color: "#FFB800" }
+    - { code: verygoodtour, name: 참좋은여행, type: 여행사, brand-color: "#E5007E" }
+    - { code: koreanair,    name: 대한항공,   type: 항공사, brand-color: "#00256C" }
+    - { code: jejuair,      name: 제주항공,   type: 항공사, brand-color: "#FF5000" }
+    - { code: aerok,        name: 에어로케이, type: 항공사, brand-color: "#1D1D1B" }
 
 logging:
   level:

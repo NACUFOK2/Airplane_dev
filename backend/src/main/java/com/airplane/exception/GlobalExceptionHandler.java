@@ -21,9 +21,9 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(new ApiError("INVALID_REQUEST", msg));
     }
 
-    @ExceptionHandler(AirlineNotFoundException.class)
-    public ResponseEntity<ApiError> handleAirline(AirlineNotFoundException e) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError("AIRLINE_NOT_FOUND", e.getMessage()));
+    @ExceptionHandler(OrganizationNotFoundException.class)
+    public ResponseEntity<ApiError> handleOrganization(OrganizationNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError("ORGANIZATION_NOT_FOUND", e.getMessage()));
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
