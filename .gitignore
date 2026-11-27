@@ -122,3 +122,6 @@ Thumbs.db
 .venv/
 __pycache__/
 *.pyc
+
+# --- 로컬 실행 로그 (run-local.sh) ---
+.run-logs/

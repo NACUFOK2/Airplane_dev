@@ -1,0 +1,4 @@
+# devcontainer 빌드 컨텍스트(프로젝트 루트)에서 이미지에 필요한 파일만 전송
+# (.venv / node_modules / 모델 등 수 GB 가 Docker 로 넘어가지 않도록 전부 제외 후 허용)
+*
+!embedding-service/requirements.txt

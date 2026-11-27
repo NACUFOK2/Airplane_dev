@@ -1,9 +1,9 @@
 {
-  "name": "Airplane QnA (Java 21 + Node 20)",
-  "build": { "dockerfile": "Dockerfile" },
+  "name": "Airplane QnA (Java 21 + Node 20 + Python 3.11)",
+  // context 를 루트로 둬야 embedding-service/requirements.txt 를 이미지에 넣을 수 있음 (루트 .dockerignore 참고)
+  "build": { "dockerfile": "Dockerfile", "context": ".." },
   "features": {
-    "ghcr.io/devcontainers/features/node:1": { "version": "20" },
-    "ghcr.io/devcontainers/features/python:1": { "version": "3.11" }
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" }
   },
   "forwardPorts": [8080, 3000, 8001],
   "portsAttributes": {
