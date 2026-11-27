@@ -11,6 +11,7 @@
 - **Frontend**: Next.js (App Router) · 토스 스타일 UI · `frontend/`
 - **Embedding**: Python FastAPI · `dragonkue/multilingual-e5-small-ko-v2` · `embedding-service/`
 - **Dev 환경**: `.devcontainer/` (JDK 21 + Maven + Node 20 + Python 3.11 일괄 구성)
+- **RAG 구현 명세**: [docs/RAG_SPEC.md](docs/RAG_SPEC.md)
 - **파라미터 설계 근거**: [docs/RAG_PARAMETERS.md](docs/RAG_PARAMETERS.md)
 - **데이터 분석 (항공사·여행사·숙박업체)**: [docs/DATA_ANALYSIS.md](docs/DATA_ANALYSIS.md)
 
