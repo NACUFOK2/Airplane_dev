@@ -19,7 +19,8 @@ done <<< "$staged"
 # 2) 내용 기반 시크릿 패턴 (API 키, 토큰, 카드번호, 주민등록번호)
 content_patterns=(
   'sk-ant-[A-Za-z0-9_-]{10,}'
-  'sk-[A-Za-z0-9]{32,}'
+  'sk-(proj|svcacct|admin)-[A-Za-z0-9_-]{20,}'
+  'sk-[A-Za-z0-9_-]{32,}'
   'ghp_[A-Za-z0-9]{30,}'
   'github_pat_[A-Za-z0-9_]{30,}'
   'AKIA[0-9A-Z]{16}'

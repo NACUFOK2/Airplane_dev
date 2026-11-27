@@ -37,10 +37,17 @@ rag:
     log-dir: chat-logs       # gitignore 대상. 개인정보는 마스킹 후 저장 (PrivacyMasker)
 
   llm:
-    provider: auto           # auto(키 있으면 claude) | claude | extractive
+    # auto: ANTHROPIC_API_KEY 가 있으면 claude, 없고 OPENAI_API_KEY 가 있으면 openai, 둘 다 없으면 extractive
+    provider: auto           # auto | claude | openai | extractive
     model: claude-opus-5-5
     max-tokens: 2000         # 답변은 짧은 FAQ 요약 → 2000 이면 잘림 없이 충분
     history-turns: 3         # 최근 3왕복만 전달 (후속 질문 맥락 유지 + 토큰 절약)
+    openai:
+      model: ${OPENAI_MODEL:gpt-5.6-sol}           # OpenAI 변경 기록에서 운영용으로 권장하는 모델. 환경변수로 교체 가능
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      max-completion-tokens: 4000  # 추론 토큰까지 포함되는 상한이라 Claude(2000)보다 여유를 둠
+      reasoning-effort: low        # 짧은 FAQ 요약이라 응답 속도 우선 (Claude effort low 와 같은 취지)
+      timeout-ms: 30000
 
   # 기관 목록. official-domains: 출처 URL 이 이 도메인(하위 도메인 포함)이면 '공식 출처'로 표시
   #            aliases: 질문 속 기관명 자동 감지에 쓰는 다른 이름 (예: "델타", "ANA")

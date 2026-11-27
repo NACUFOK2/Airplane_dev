@@ -21,7 +21,7 @@ export interface Source {
 
 export interface ChatResponse {
   answer: string;
-  mode: "claude" | "extractive" | "out_of_scope";
+  mode: "claude" | "openai" | "extractive" | "out_of_scope";
   retrieval: "hybrid" | "bm25";
   sources: Source[];
 }
