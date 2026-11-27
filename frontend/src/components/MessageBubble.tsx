@@ -1,8 +1,9 @@
 import type { ChatMessage } from "@/types/chat";
 import RichText from "./RichText";
+import FeedbackButtons from "./FeedbackButtons";
 import SourceList from "./SourceList";
 
-export default function MessageBubble({ message }: { message: ChatMessage }) {
+export default function MessageBubble({ message, orgCode }: { message: ChatMessage; orgCode: string }) {
   if (message.role === "user") {
     return (
       <div className="row row--user">
@@ -18,6 +19,7 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
           <RichText text={message.content} />
         </div>
         {message.sources && <SourceList sources={message.sources} />}
+        {!message.error && message.question && <FeedbackButtons message={message} orgCode={orgCode} />}
         {message.retrieval === "bm25" && (
           <span className="mode-badge">임베딩 서버 미연결 · 키워드 검색 결과예요</span>
         )}

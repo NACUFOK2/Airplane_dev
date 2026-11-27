@@ -69,7 +69,7 @@ export default function Home() {
           />
         ) : (
           <div className="messages">
-            {messages.map((m) => <MessageBubble key={m.id} message={m} />)}
+            {messages.map((m) => <MessageBubble key={m.id} message={m} orgCode={selected} />)}
             {loading && <TypingIndicator />}
           </div>
         )}

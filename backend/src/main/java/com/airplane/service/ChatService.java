@@ -8,6 +8,7 @@ import com.airplane.domain.RetrievedDocument;
 import com.airplane.dto.ChatRequest;
 import com.airplane.dto.ChatResponse;
 import com.airplane.dto.SourceResponse;
+import com.airplane.feedback.FeedbackService;
 import com.airplane.llm.LlmClient;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,9 +27,11 @@ public class ChatService {
     private final OrganizationService organizationService;
     private final LlmClient llmClient;
     private final RagProperties properties;
+    private final FeedbackService feedbackService;
 
     public ChatService(RetrievalService retrievalService, OrganizationService organizationService,
-                       LlmClient llmClient, RagProperties properties) {
+                       LlmClient llmClient, RagProperties properties, FeedbackService feedbackService) {
+        this.feedbackService = feedbackService;
         this.retrievalService = retrievalService;
         this.organizationService = organizationService;
         this.llmClient = llmClient;
@@ -42,7 +45,8 @@ public class ChatService {
         RetrievalResult result = retrievalService.retrieve(request.question(), selected, previousUserQuestion(request));
 
         if (result.outOfScope() || result.documents().isEmpty()) {
-            // 근거 없는 상태로 LLM 을 부르지 않는다: 환각 방지 + 비용 절감
+            // 근거 없는 상태로 LLM 을 부르지 않는다: 환각 방지 + 비용 절감. 데이터 공백 파악용으로 기록
+            feedbackService.recordOutOfScope(request.question(), code);
             return new ChatResponse(OUT_OF_SCOPE_ANSWER, "out_of_scope", result.mode(), List.of());
         }
 

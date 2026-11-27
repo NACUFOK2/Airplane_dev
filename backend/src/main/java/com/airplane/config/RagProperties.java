@@ -11,12 +11,15 @@ public record RagProperties(
         Retrieval retrieval,
         Embedding embedding,
         Llm llm,
+        Feedback feedback,
         List<OrganizationDef> organizations) {
 
     public record Retrieval(int topK, int rrfK, int candidatePool, double denseMinScore, boolean autoOrgFilter,
                             boolean followupCarryOrg, int followupShortChars) {}
 
     public record Embedding(String baseUrl, int timeoutMs, int dimension) {}
+
+    public record Feedback(boolean enabled, String logDir) {}
 
     /** provider: auto(키 있으면 claude) | claude | extractive */
     public record Llm(String provider, String model, long maxTokens, int historyTurns) {}

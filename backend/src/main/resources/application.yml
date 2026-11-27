@@ -26,6 +26,10 @@ rag:
     timeout-ms: 3000         # 첫 호출 워밍업 포함 여유. 초과 시 BM25 단독으로 폴백
     dimension: 384
 
+  feedback:
+    enabled: true
+    log-dir: chat-logs       # gitignore 대상. 개인정보는 마스킹 후 저장 (PiiMasker)
+
   llm:
     provider: auto           # auto(키 있으면 claude) | claude | extractive
     model: claude-opus-5-5

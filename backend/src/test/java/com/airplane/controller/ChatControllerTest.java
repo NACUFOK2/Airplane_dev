@@ -17,7 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest(properties = "rag.llm.provider=extractive")
+@SpringBootTest(properties = {"rag.llm.provider=extractive", "rag.feedback.log-dir=target/test-chat-logs"})
 @AutoConfigureMockMvc
 class ChatControllerTest {
 
@@ -74,5 +74,34 @@ class ChatControllerTest {
         mvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"question\":\"수하물\",\"orgCode\":\"asiana\"}"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void feedbackAndOutOfScopeShowUpInInsights() throws Exception {
+        float[] v = new float[384];
+        v[0] = 1f;
+        when(embeddingClient.embedQuery(anyString())).thenReturn(Optional.of(v));
+        mvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"question\":\"insights-test 범위밖 질문\",\"orgCode\":\"ALL\"}"));
+        mvc.perform(post("/api/feedback").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rating\":\"down\",\"question\":\"insights-test 별로\",\"orgCode\":\"ALL\",\"mode\":\"extractive\",\"sourceIds\":[\"052\"]}"))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/insights"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.downCount").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)))
+                .andExpect(jsonPath("$.outOfScopeCount").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)));
+    }
+
+    @Test
+    void rejectsInvalidFeedback() throws Exception {
+        mvc.perform(post("/api/feedback").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rating\":\"meh\",\"question\":\"q\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void insightsForbiddenFromRemoteAddress() throws Exception {
+        mvc.perform(get("/api/insights").with(r -> { r.setRemoteAddr("203.0.113.5"); return r; }))
+                .andExpect(status().isForbidden());
     }
 }
