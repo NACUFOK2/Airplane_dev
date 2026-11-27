@@ -36,9 +36,17 @@ VSCode 에서 폴더를 열고 **Reopen in Container** → JDK 21 / Maven / Node
 ./.devcontainer/run-local.sh
 ```
 
-### 2) 직접 실행
+### 2) 한 번에 실행 (컨테이너 없이, macOS·Linux)
 ```bash
-cd embedding-service && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && .venv/bin/uvicorn app:app --host 127.0.0.1 --port 8001
+./.devcontainer/run-local.sh
+```
+- 임베딩 서비스 가상환경이 없으면 `embedding-service/setup.sh` 로 **자동 설치**한 뒤 세 서버를 띄웁니다.
+- 필요: JDK 21 · Maven · Node 20 · **Python 3.9~3.14** (인텔 맥은 3.9~3.12)
+- 처음 실행은 임베딩 모델(~465MB) 다운로드로 수 분 걸릴 수 있습니다.
+
+### 3) 서버별로 직접 실행
+```bash
+cd embedding-service && ./setup.sh && .venv/bin/uvicorn app:app --host 127.0.0.1 --port 8001
 ```
 ```bash
 cd backend && mvn spring-boot:run
@@ -46,6 +54,29 @@ cd backend && mvn spring-boot:run
 ```bash
 cd frontend && npm install && npm run dev
 ```
+
+**Windows (PowerShell)** — `setup.sh` 대신:
+```powershell
+cd embedding-service; py -3.12 -m venv .venv; .venv\Scripts\pip install -r requirements.txt; .venv\Scripts\uvicorn app:app --host 127.0.0.1 --port 8001
+```
+
+### 상태 확인
+```bash
+for u in http://127.0.0.1:8001/health http://localhost:8080/api/health http://localhost:3000; do printf "%-35s " "$u"; curl -s -o /dev/null -m 3 -w "%{http_code}\n" "$u"; done
+```
+세 줄 모두 `200` 이면 정상입니다. 임베딩 `/health` 의 `selfCheck` 가 0.95 이상이면 설치된 라이브러리가 문서 벡터와 맞습니다.
+
+### 임베딩 서버가 안 뜰 때
+| 증상 | 원인 | 해결 |
+|---|---|---|
+| `.venv/bin/uvicorn: No such file` | 가상환경 미설치 | `cd embedding-service && ./setup.sh` |
+| `No matching distribution found for torch…/numpy…` | 지원하지 않는 Python 버전 | Python 3.11~3.12 설치 후 `./setup.sh --recreate` (예: `brew install python@3.12`) |
+| 인텔 맥에서 torch 설치 실패 | torch 가 인텔 맥은 2.2 까지만 지원 | Python 3.12 이하로 `./setup.sh --recreate` |
+| 실행 후 한참 응답 없음 | 첫 실행 모델 다운로드(~465MB) 중 | 로그에 `임베딩 모델 준비 완료` 가 뜰 때까지 대기. 회사망이면 huggingface.co 접속 허용 필요 |
+| `Address already in use` | 8001 포트를 다른 프로세스가 사용 | `lsof -iTCP:8001 -sTCP:LISTEN` 으로 확인 후 종료 |
+| `selfCheck` 0.95 미만 경고 | 라이브러리 버전 차이가 큼 | `./setup.sh --recreate`, 계속되면 이슈로 공유 |
+
+임베딩 서버가 꺼져 있어도 백엔드는 키워드 검색(BM25)만으로 계속 동작합니다 (정확도 소폭 하락).
 
 - 웹: http://localhost:3000 (Next.js 가 `/api/*` 를 http://localhost:8080 으로 프록시)
 - API: `GET /api/organizations`, `POST /api/chat` `{ "question": "...", "orgCode": "koreanair|delta|booking|…|ALL" }` (기관 코드는 `application.yml` 의 `rag.organizations`)

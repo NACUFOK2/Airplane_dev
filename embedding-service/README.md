@@ -4,9 +4,14 @@
 Spring Boot 백엔드가 `POST http://127.0.0.1:8001/embed` 로 호출합니다. 꺼져 있으면 백엔드는 BM25 단독 검색으로 자동 전환됩니다.
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+./setup.sh                                              # Python 선택·.venv·의존성·모델 다운로드·자가 점검
 .venv/bin/uvicorn app:app --host 127.0.0.1 --port 8001
 ```
+
+- 지원 Python: 3.9~3.14 (인텔 맥은 3.9~3.12. torch 가 인텔 맥은 2.2 까지만 지원)
+- 리눅스에서는 CPU 전용 torch 를 받아 CUDA 패키지(수 GB)를 생략합니다.
+- `/health` 의 `selfCheck` = 설치된 라이브러리로 만든 벡터와 저장된 문서 벡터의 코사인 (0.95 이상 정상)
+- 문제가 생기면 `./setup.sh --recreate` 로 가상환경을 새로 만드세요. 증상별 해결은 루트 README '임베딩 서버가 안 뜰 때' 참고.
 
 - `data/qa_embeddings.jsonl` : 문답 원문 178건 × 질문 변형 4종 = 712행 + 384차원 벡터 (v2 원본)
 - `data/v1/qa_embeddings.jsonl` : 이전 버전 83건 (v1 평가 기록 재현용)
