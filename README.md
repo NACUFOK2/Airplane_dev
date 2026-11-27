@@ -8,6 +8,7 @@ Q&A 83건을 하이브리드 검색(임베딩 + BM25)해 답변하는 로컬 RAG
 - **Embedding**: Python FastAPI · `dragonkue/multilingual-e5-small-ko-v2` · `embedding-service/`
 - **Dev 환경**: `.devcontainer/` (JDK 21 + Maven + Node 20 + Python 3.11 일괄 구성)
 - **파라미터 설계 근거**: [docs/RAG_PARAMETERS.md](docs/RAG_PARAMETERS.md)
+- **데이터 분석 (여행사 vs 항공사)**: [docs/DATA_ANALYSIS.md](docs/DATA_ANALYSIS.md)
 
 > 배포하지 않으며 로컬에서만 실행합니다. 자세한 실행 방법은 아래 섹션 참고.
 
