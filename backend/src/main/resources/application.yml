@@ -1,0 +1,28 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: airplane-backend
+
+# 시크릿(ANTHROPIC_API_KEY)은 이 파일에 넣지 말고 환경변수로만 주입한다.
+rag:
+  top-k: 4
+  min-score: 0.5
+  allowed-origins:
+    - http://localhost:3000
+  llm:
+    provider: auto
+    model: claude-opus-5-5
+    max-tokens: 4000
+    history-turns: 3
+  airlines:
+    - { code: KE, name: 대한항공,   name-en: Korean Air, brand-color: "#00256C", customer-center: 대한항공 공식 홈페이지 고객센터, file: korean-air.md }
+    - { code: OZ, name: 아시아나항공, name-en: Asiana Airlines, brand-color: "#C8102E", customer-center: 아시아나항공 공식 홈페이지 고객센터, file: asiana.md }
+    - { code: 7C, name: 제주항공,   name-en: Jeju Air, brand-color: "#FF5000", customer-center: 제주항공 공식 홈페이지 고객센터, file: jeju-air.md }
+    - { code: LJ, name: 진에어,     name-en: Jin Air, brand-color: "#6CC24A", customer-center: 진에어 공식 홈페이지 고객센터, file: jin-air.md }
+    - { code: TW, name: 티웨이항공,  name-en: T'way Air, brand-color: "#D6001C", customer-center: 티웨이항공 공식 홈페이지 고객센터, file: tway.md }
+
+logging:
+  level:
+    com.airplane: INFO
