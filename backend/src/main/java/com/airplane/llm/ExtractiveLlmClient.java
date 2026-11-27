@@ -23,6 +23,9 @@ public class ExtractiveLlmClient implements LlmClient {
                 sb.append("- ").append(d.org()).append(" · ").append(d.question()).append(" [").append(i + 1).append("]\n");
             }
         }
+        if (!top.official()) {
+            sb.append("\n이 답변은 비공식 정리 자료 기준이에요. ").append(top.org()).append(" 공식 홈페이지에서 한 번 더 확인해 주세요.\n");
+        }
         sb.append("\n_AI 요약 없이 가장 관련 높은 Q&A 원문을 보여드리고 있어요._");
         return sb.toString().strip();
     }

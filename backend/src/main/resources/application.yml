@@ -30,14 +30,15 @@ rag:
     max-tokens: 2000         # 답변은 짧은 FAQ 요약 → 2000 이면 잘림 없이 충분
     history-turns: 3         # 최근 3왕복만 전달 (후속 질문 맥락 유지 + 토큰 절약)
 
+  # official-domains: 출처 URL 이 이 도메인(하위 도메인 포함)이면 '공식 출처'로 표시
   organizations:
-    - { code: hanatour,     name: 하나투어,   type: 여행사, brand-color: "#5E2BB8" }
-    - { code: modetour,     name: 모두투어,   type: 여행사, brand-color: "#0064FF" }
-    - { code: ybtour,       name: 노랑풍선,   type: 여행사, brand-color: "#FFB800" }
-    - { code: verygoodtour, name: 참좋은여행, type: 여행사, brand-color: "#E5007E" }
-    - { code: koreanair,    name: 대한항공,   type: 항공사, brand-color: "#00256C" }
-    - { code: jejuair,      name: 제주항공,   type: 항공사, brand-color: "#FF5000" }
-    - { code: aerok,        name: 에어로케이, type: 항공사, brand-color: "#1D1D1B" }
+    - { code: hanatour,     name: 하나투어,   type: 여행사, brand-color: "#5E2BB8", official-domains: [hanatour.com] }
+    - { code: modetour,     name: 모두투어,   type: 여행사, brand-color: "#0064FF", official-domains: [modetour.co.kr] }
+    - { code: ybtour,       name: 노랑풍선,   type: 여행사, brand-color: "#FFB800", official-domains: [ybtour.co.kr] }
+    - { code: verygoodtour, name: 참좋은여행, type: 여행사, brand-color: "#E5007E", official-domains: [verygoodtour.com] }
+    - { code: koreanair,    name: 대한항공,   type: 항공사, brand-color: "#00256C", official-domains: [koreanair.com] }
+    - { code: jejuair,      name: 제주항공,   type: 항공사, brand-color: "#FF5000", official-domains: [jejuair.net] }
+    - { code: aerok,        name: 에어로케이, type: 항공사, brand-color: "#1D1D1B", official-domains: [aerok.com] }
 
 logging:
   level:

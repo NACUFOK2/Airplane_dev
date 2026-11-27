@@ -18,7 +18,7 @@ public class OrganizationRepository {
 
     public OrganizationRepository(RagProperties properties) {
         for (RagProperties.OrganizationDef d : properties.organizations()) {
-            byCode.put(d.code(), new Organization(d.code(), d.name(), d.type(), d.brandColor()));
+            byCode.put(d.code(), new Organization(d.code(), d.name(), d.type(), d.brandColor(), d.officialDomains()));
         }
         byNameLengthDesc = byCode.values().stream()
                 .sorted(Comparator.comparingInt((Organization o) -> o.name().length()).reversed())
@@ -27,6 +27,10 @@ public class OrganizationRepository {
 
     public List<Organization> findAll() {
         return List.copyOf(byCode.values());
+    }
+
+    public Optional<Organization> findByName(String name) {
+        return byCode.values().stream().filter(o -> o.name().equals(name)).findFirst();
     }
 
     public Optional<Organization> findByCode(String code) {

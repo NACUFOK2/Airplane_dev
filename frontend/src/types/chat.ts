@@ -15,6 +15,7 @@ export interface Source {
   question: string;
   snippet: string;
   url: string;
+  official: boolean;
   score: number;
 }
 

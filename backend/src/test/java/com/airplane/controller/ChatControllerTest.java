@@ -45,7 +45,8 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$.mode").value("extractive"))
                 .andExpect(jsonPath("$.retrieval").value("bm25"))
                 .andExpect(jsonPath("$.sources[0].org").value("제주항공"))
-                .andExpect(jsonPath("$.sources[0].url").value(org.hamcrest.Matchers.startsWith("https://")));
+                .andExpect(jsonPath("$.sources[0].url").value(org.hamcrest.Matchers.startsWith("https://")))
+                .andExpect(jsonPath("$.sources[0].official").value(true));
     }
 
     @Test

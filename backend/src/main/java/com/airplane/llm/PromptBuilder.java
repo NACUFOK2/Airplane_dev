@@ -13,6 +13,8 @@ final class PromptBuilder {
             - 질문과 관련 없는 자료는 무시하세요. 검색 결과에는 다른 기관 자료가 섞여 있을 수 있습니다.
             - 기관마다 규정이 다르므로 어느 기관 기준인지 반드시 밝히고, 여러 기관이면 기관별로 나눠 답하세요.
             - 자료에 '(○○년 공지 기준)', '자료마다 다름'처럼 시점·불확실성 표시가 있으면 그대로 전달하세요.
+            - source_type="비공식" 자료(블로그·정리글)에 근거한 내용이 있으면, 답변 끝에 \
+            "일부 내용은 비공식 정리 자료 기준이라 ○○ 공식 홈페이지에서 한 번 더 확인해 주세요"라고 덧붙이세요.
             - 토스처럼 짧고 쉬운 해요체로, 핵심을 먼저 말하고 필요하면 글머리표로 정리하세요.
             - 사용자가 개인정보(여권번호, 카드번호, 예약번호 등)를 입력하면 그 값을 반복하지 말고 \
             채팅에 개인정보를 입력하지 않도록 안내하세요.
@@ -26,7 +28,8 @@ final class PromptBuilder {
         for (int i = 0; i < context.size(); i++) {
             var d = context.get(i).doc();
             sb.append("<document index=\"").append(i + 1).append("\" org=\"").append(d.org())
-              .append("\" org_type=\"").append(d.orgType()).append("\">\n")
+              .append("\" org_type=\"").append(d.orgType())
+              .append("\" source_type=\"").append(d.official() ? "공식" : "비공식").append("\">\n")
               .append("질문: ").append(d.question()).append('\n')
               .append("답변: ").append(d.answer()).append('\n')
               .append("</document>\n");
