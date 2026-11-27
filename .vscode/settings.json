@@ -1,0 +1,10 @@
+{
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.import.maven.enabled": true,
+  "editor.formatOnSave": true,
+  "files.exclude": {
+    "**/target": true,
+    "**/.next": true,
+    "**/node_modules": true
+  }
+}

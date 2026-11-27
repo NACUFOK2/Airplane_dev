@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Backend: AirplaneApplication",
+      "request": "launch",
+      "mainClass": "com.airplane.AirplaneApplication",
+      "projectName": "airplane-backend",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "type": "node-terminal",
+      "name": "Frontend: next dev",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/frontend"
+    }
+  ],
+  "compounds": [
+    { "name": "Full Stack (Local)", "configurations": ["Backend: AirplaneApplication", "Frontend: next dev"] }
+  ]
+}
