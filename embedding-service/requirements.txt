@@ -1,6 +1,18 @@
-sentence-transformers==5.1.2
-torch==2.8.0
-numpy<2.1
-fastapi==0.128.8
-uvicorn[standard]==0.39.0
-openpyxl==3.1.5
+# 임베딩 서비스 의존성. 버전은 '범위'로 지정해 팀원 OS·파이썬 버전 차이에 대응한다.
+# 지원: Python 3.9~3.14 (인텔 맥은 3.9~3.12), macOS·Linux·Windows
+# 검증된 조합: Python 3.9 / macOS arm64 / sentence-transformers 5.1.2 / torch 2.8.0 / numpy 2.0.2
+# 리눅스(개발 컨테이너)는 setup.sh 가 CPU 전용 torch 를 받는다 (CUDA 패키지 수 GB 생략)
+
+sentence-transformers>=5.1,<6
+transformers>=4.41,<5
+
+# torch 는 2.2.2 를 끝으로 인텔 맥(x86_64) 설치 파일을 내지 않는다 → 인텔 맥만 2.2 대로 고정
+torch>=2.2 ; sys_platform != "darwin" or platform_machine != "x86_64"
+torch>=2.2,<2.3 ; sys_platform == "darwin" and platform_machine == "x86_64"
+# torch 2.2 는 numpy 1.x 로 빌드돼 numpy 2 와 함께 쓰면 오류 → 인텔 맥만 numpy 1.x
+numpy>=1.24 ; sys_platform != "darwin" or platform_machine != "x86_64"
+numpy>=1.24,<2 ; sys_platform == "darwin" and platform_machine == "x86_64"
+
+fastapi>=0.110,<1
+uvicorn[standard]>=0.29
+openpyxl>=3.1
