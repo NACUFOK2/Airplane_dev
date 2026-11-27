@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# 커밋 전 보안 검사: AI 식별값/토큰/개인정보/결제정보 유출 차단
+set -euo pipefail
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$staged" ] && exit 0
+
+fail=0
+
+# 1) 금지 파일명 패턴
+blocked_name='(^|/)\.env($|\.)|\.pem$|\.key$|\.p12$|\.jks$|secret|credential|apikey|api[-_]key|payment|billing|personal|passport|application-(local|secret|prod)'
+while IFS= read -r f; do
+  case "$f" in *.example) continue;; esac
+  if echo "$f" | grep -Eiq "$blocked_name"; then
+    echo "❌ [pre-commit] 금지된 파일: $f"; fail=1
+  fi
+done <<< "$staged"
+
+# 2) 내용 기반 시크릿 패턴 (API 키, 토큰, 카드번호, 주민등록번호)
+content_patterns=(
+  'sk-ant-[A-Za-z0-9_-]{10,}'
+  'sk-[A-Za-z0-9]{32,}'
+  'ghp_[A-Za-z0-9]{30,}'
+  'github_pat_[A-Za-z0-9_]{30,}'
+  'AKIA[0-9A-Z]{16}'
+  'AIza[0-9A-Za-z_-]{35}'
+  '-----BEGIN [A-Z ]*PRIVATE KEY-----'
+  '(live|test)_sk_[A-Za-z0-9]{10,}'
+  '\b[0-9]{6}-[1-4][0-9]{6}\b'
+  '\b[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{4}\b'
+)
+while IFS= read -r f; do
+  [ -f "$f" ] || continue
+  case "$f" in .githooks/*|docs/SECURITY.md) continue;; esac
+  for p in "${content_patterns[@]}"; do
+    if git show ":$f" 2>/dev/null | grep -Eq -- "$p"; then
+      echo "❌ [pre-commit] 시크릿/개인정보 의심 패턴 발견: $f  (pattern: $p)"; fail=1
+    fi
+  done
+done <<< "$staged"
+
+if [ "$fail" -ne 0 ]; then
+  echo "커밋이 차단되었습니다. 시크릿은 .env 또는 환경변수로만 관리하세요."
+  exit 1
+fi
+exit 0

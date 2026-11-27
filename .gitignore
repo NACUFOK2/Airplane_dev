@@ -1,0 +1,117 @@
+# =====================================================================
+#  보안 정책: AI 식별값 / 토큰 / 개인정보 / 결제 관련 파일은 절대 커밋 금지
+#  (예시 템플릿 *.example 파일만 허용)
+# =====================================================================
+
+# --- 환경변수 & 시크릿 -------------------------------------------------
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.env
+secrets/
+**/secrets/
+*secret*
+*Secret*
+!**/*.example
+
+# --- AI 식별값 / API 키 / 토큰 ------------------------------------------
+*apikey*
+*api-key*
+*api_key*
+*token*
+*Token*
+!**/tokenizer/**
+*credential*
+*credentials*
+anthropic*.json
+openai*.json
+.anthropic/
+.config/anthropic/
+
+# --- 인증서 / 키 --------------------------------------------------------
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+id_rsa*
+id_ed25519*
+
+# --- Spring 로컬/시크릿 설정 ---------------------------------------------
+application-local.yml
+application-local.yaml
+application-local.properties
+application-secret*.yml
+application-secret*.yaml
+application-secret*.properties
+application-prod*.yml
+application-prod*.yaml
+
+# --- 개인정보 (PII) -----------------------------------------------------
+personal/
+**/personal/
+pii/
+**/pii/
+*personal*
+*pii*
+*passport*
+*customer*.csv
+*customer*.xlsx
+*member*.csv
+*user-data*
+*userdata*
+*.sqlite
+*.db
+chat-logs/
+**/chat-logs/
+
+# --- 결제 관련 ----------------------------------------------------------
+payment/
+**/payment/
+*payment*
+*Payment*
+*billing*
+*card*.json
+*card*.csv
+*pg-config*
+*toss-secret*
+
+# --- Java / Spring Boot -------------------------------------------------
+backend/target/
+backend/build/
+backend/.gradle/
+*.class
+*.log
+hs_err_pid*
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# --- Node / Next.js -----------------------------------------------------
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/next-env.d.ts
+frontend/*.tsbuildinfo
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- IDE / OS -----------------------------------------------------------
+.idea/
+*.iml
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.DS_Store
+Thumbs.db
+
+# --- Claude Code 로컬 설정 ----------------------------------------------
+.claude/settings.local.json
