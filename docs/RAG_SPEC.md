@@ -10,7 +10,7 @@
 | 목적 | 항공사·여행사·숙박업체 규정 문답을 검색해, 근거를 밝힌 답변을 돌려주는 상담 챗봇 |
 | 지식 | 문답 원문 178건 × 질문 변형 4종 = 712행, 기관 20곳 (항공사 10 · 여행사 4 · 숙박업체 6) |
 | 검색 | 하이브리드: 의미 검색(Dense, e5-small-ko 384차원) + 키워드 검색(BM25) → RRF 융합 |
-| 생성 | Claude(`claude-opus-5-5`). API 키가 없으면 검색 결과 원문을 보여주는 **추출형** 답변 |
+| 생성 | Claude(`claude-opus-5-5`) 또는 OpenAI(`gpt-5.6-sol`, Chat Completions). 키가 없으면 검색 결과 원문을 보여주는 **추출형** 답변 |
 | 실행 | 로컬 전용 (배포 없음). 프로세스 3개 |
 
 ```mermaid
@@ -18,7 +18,7 @@ flowchart LR
     U[브라우저] -->|/api/*| N[Next.js :3000<br/>프록시]
     N --> B[Spring Boot :8080<br/>검색·생성]
     B -->|질의 임베딩| E[embedding-service :8001<br/>FastAPI + e5-small-ko]
-    B -->|답변 생성| C[(Claude API)]
+    B -->|답변 생성| C[(Claude API<br/>또는 OpenAI API)]
     B --- I[(qa_embeddings.jsonl<br/>메모리 적재)]
     B --- L[(chat-logs/<br/>피드백·미응답 기록)]
 ```
@@ -85,8 +85,11 @@ flowchart TD
     I -->|아니오| J[프롬프트 구성]
     G --> J
     J --> K{API 키?}
-    K -->|있음| L[Claude 생성]
+    K -->|ANTHROPIC| L[Claude 생성]
+    K -->|OPENAI| L2[OpenAI 생성]
     K -->|없음| M[추출형 답변]
+    L2 -->|오류·빈 응답| M
+    L2 --> R
     L -->|오류·빈 응답| M
     L --> R[응답 + 출처]
     M --> R
@@ -168,11 +171,15 @@ BM25 순위 상위 4건을 그대로 쓰고 `retrieval: "bm25"` 로 응답합니
   ```
 - **대화 기록**: `history` 중 최근 `history-turns`×2(6)개를 넣습니다. Messages API 규칙에 맞게 `user` 로 시작하고 역할이 번갈아 나오도록 정리하며, 마지막이 `user` 면 뺍니다(현재 질문은 위 메시지로 들어가므로). 프론트는 오류 메시지와 범위 밖 답변을 기록에서 빼고 최근 6개만 보냅니다.
 
-### 3.10 생성 (`LlmConfig`, `ClaudeLlmClient`, `ExtractiveLlmClient`)
-| 조건 | 사용 클라이언트 |
-|---|---|
-| `provider: extractive` 이거나 `ANTHROPIC_API_KEY` 환경변수가 없음 | 추출형 |
-| 그 외 | Claude |
+### 3.10 생성 (`LlmConfig`, `ClaudeLlmClient`, `OpenAiLlmClient`, `ExtractiveLlmClient`)
+| `provider` | 조건 | 사용 클라이언트 |
+|---|---|---|
+| `auto` (기본) | `ANTHROPIC_API_KEY` 있음 | Claude |
+| `auto` | Anthropic 키 없고 `OPENAI_API_KEY` 있음 | OpenAI |
+| `claude` / `openai` | 해당 키 있음 | 지정한 쪽 |
+| 모든 값 | 쓸 수 있는 키 없음, 또는 `extractive` | 추출형 |
+
+세 생성기 모두 같은 시스템 프롬프트·문맥·대화 기록(`PromptBuilder`)을 씁니다. 검색 단계는 생성기와 무관하게 같습니다.
 
 **Claude 호출 설정**: Java SDK `anthropic-java` 3.3.0을 쓰는 비스트리밍 요청입니다.
 - 모델 `claude-opus-5-5`, `max_tokens` 2000
@@ -183,6 +190,13 @@ BM25 순위 상위 4건을 그대로 쓰고 `retrieval: "bm25"` 로 응답합니
 - 생성 결과는 `LlmAnswer(text, mode)` 로 돌려줍니다. 대체가 일어나면 `mode` 가 `extractive` 로 바뀌어 응답에 그대로 반영됩니다.
 - SDK 기본 재시도(2회) 때문에 연결 실패 시 대체 답변까지 약 4.5초가 걸립니다 (닫힌 포트로 실측).
 
+**OpenAI 호출 설정**: SDK 없이 Spring `RestClient` 로 `POST {base-url}/chat/completions` 를 호출합니다.
+- 요청: `model`(기본 `gpt-5.6-sol`, `OPENAI_MODEL` 로 교체), `messages`(system → 대화 기록 → 문맥 포함 user), `max_completion_tokens` 4000, `reasoning_effort` `low`
+  - `max_completion_tokens` 는 추론 토큰까지 포함하는 상한이라 Claude(2000)보다 여유를 둡니다. 구형 `max_tokens` 는 OpenAI 에서 지원 중단돼 쓰지 않습니다.
+- 응답: `choices[0].message.content`. `message.refusal` 이 있으면 정중한 거절 문구(`mode: openai`)를 돌려줍니다.
+- 빈 응답(`finish_reason: length` 포함), HTTP 오류(401 키 오류·404 모델 없음·429 한도·5xx), 네트워크 오류(연결 5초·응답 30초 타임아웃)면 **추출형 답변으로 대체**(`mode: extractive`)합니다. 로그에는 상태 코드만 남기고 응답 본문은 남기지 않습니다.
+- 주의: 이 경로를 쓰면 사용자 질문과 검색된 문답이 OpenAI 로 전송됩니다.
+
 **추출형 답변**:
 - 기관이 정해졌거나 상위 1·2위가 같은 기관: "**기관** 기준으로 안내드려요" + 1위 답변 + 관련 질문 2개. 1위가 비공식 출처면 공식 확인 안내를 붙입니다.
 - 기관 미지정(`전체 기관`)이고 1·2위 기관이 다름: "기관마다 규정이 달라요" + **기관별 답변 최대 3곳** + "이용하시는 곳을 알려주시면…"
@@ -191,7 +205,7 @@ BM25 순위 상위 4건을 그대로 쓰고 `retrieval: "bm25"` 로 응답합니
 ```json
 {
   "answer": "**제주항공** 기준으로 안내드려요.\n\n…",
-  "mode": "extractive",          // claude | extractive | out_of_scope
+  "mode": "extractive",          // claude | openai | extractive | out_of_scope
   "retrieval": "hybrid",         // hybrid | bm25
   "sources": [
     {
@@ -241,14 +255,19 @@ BM25 순위 상위 4건을 그대로 쓰고 `retrieval: "bm25"` 로 응답합니
 | `embedding.base-url` | `http://127.0.0.1:8001` | 임베딩 서비스 |
 | `embedding.timeout-ms` | 3000 | 응답 타임아웃 |
 | `embedding.dimension` | 384 | 벡터 차원 (적재·응답 검사) |
-| `llm.provider` | auto | `auto`/`claude`(키 있을 때만) / `extractive` |
+| `llm.provider` | auto | `auto` / `claude` / `openai` / `extractive` (3.10 표) |
+| `llm.openai.model` | `${OPENAI_MODEL:gpt-5.6-sol}` | OpenAI 모델 |
+| `llm.openai.base-url` | `${OPENAI_BASE_URL:https://api.openai.com/v1}` | |
+| `llm.openai.max-completion-tokens` | 4000 | 추론 토큰 포함 상한 |
+| `llm.openai.reasoning-effort` | low | |
+| `llm.openai.timeout-ms` | 30000 | 응답 타임아웃 |
 | `llm.model` | `claude-opus-5-5` | |
 | `llm.max-tokens` | 2000 | |
 | `llm.history-turns` | 3 | Claude 에 넘길 최근 대화 왕복 수 |
 | `feedback.enabled` / `log-dir` | true / `chat-logs` | 피드백 기록 |
 | `organizations[]` | 20개 | `code`, `name`, `type`, `brand-color`, `official-domains`, `aliases` |
 
-API 키는 설정 파일에 넣지 않습니다. `ANTHROPIC_API_KEY` 환경변수로만 받습니다(`.env` 는 커밋 제외).
+API 키는 설정 파일에 넣지 않습니다. `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` 환경변수로만 받습니다(`.env` 는 커밋 제외, pre-commit 훅이 `sk-ant-`·`sk-proj-` 등 키 패턴 차단).
 
 ## 6. 실패·폴백 정리
 
@@ -258,6 +277,8 @@ API 키는 설정 파일에 넣지 않습니다. `ANTHROPIC_API_KEY` 환경변�
 | API 키 없음 | 추출형 답변 | `mode: "extractive"` |
 | Claude 429 / API 오류 / 빈 응답 | 추출형 답변으로 대체 | `mode: "extractive"` |
 | Claude 네트워크 오류(타임아웃·연결 실패)·기타 SDK 오류 | 추출형 답변으로 대체 (재시도 포함 약 4.5초) | `mode: "extractive"` |
+| OpenAI 401·404·429·5xx / 네트워크 오류 / 빈 응답 | 추출형 답변으로 대체 (재시도 없음) | `mode: "extractive"` |
+| OpenAI 거절(`refusal`) | 거절 안내 | `mode: "openai"` |
 | Claude 거절(`refusal`) | 서버 측 대체 모델 재시도 후에도 거절이면 거절 안내 | `mode: "claude"` |
 | 범위 밖·자료에 없는 기관 | LLM 호출 없이 안내, 미응답 기록 | `mode: "out_of_scope"` |
 | 잘못된 JSON·검증 실패 | 400 + 한국어 메시지 | |
@@ -281,7 +302,7 @@ API 키는 설정 파일에 넣지 않습니다. `ANTHROPIC_API_KEY` 환경변�
 | 검색 | `service/RetrievalService`, `rag/Bm25Index`, `rag/TextAnalyzer`, `rag/DenseIndex`, `rag/RankFusion` |
 | 질의 임베딩 | `client/HttpEmbeddingClient` → `embedding-service/app.py` |
 | 데이터 적재 | `repository/QaRepository`, `repository/OrganizationRepository` |
-| 생성 | `config/LlmConfig`, `llm/ClaudeLlmClient`, `llm/ExtractiveLlmClient`, `llm/PromptBuilder`, `llm/LlmAnswer` |
+| 생성 | `config/LlmConfig`, `llm/ClaudeLlmClient`, `llm/OpenAiLlmClient`, `llm/ExtractiveLlmClient`, `llm/PromptBuilder`, `llm/LlmAnswer` |
 | 피드백 | `feedback/FeedbackService`, `feedback/PrivacyMasker` |
 | 인덱스 생성·평가·분석 | `embedding-service/scripts/build_index.py`, `eval/evaluate_v2.py`, `eval/analyze_data.py` |
 | 화면 | `frontend/src/app/page.tsx`, `hooks/useChat.ts`, `components/*` |
@@ -290,7 +311,8 @@ API 키는 설정 파일에 넣지 않습니다. `ANTHROPIC_API_KEY` 환경변�
 
 ## 9. 알려진 한계
 
-1. **Claude 의 실제 답변 품질은 검증되지 않았습니다.** 개발 PC 에 API 키가 없습니다. Claude 경로는 가짜 SDK 응답을 쓴 단위 테스트(성공·거절·빈 응답·네트워크 오류·기타 SDK 오류)와, 닫힌 포트로 실제 연결 실패를 일으킨 실행까지 확인했습니다.
+1. **Claude·OpenAI 의 실제 답변 품질은 검증되지 않았습니다.** OpenAI 경로도 가짜 HTTP 서버 테스트(요청 형식·거절·빈 응답·401·429·네트워크 오류)와 닫힌 포트 실행까지만 확인했습니다. 기본 모델명 `gpt-5.6-sol` 은 OpenAI 변경 기록의 권장 모델이며, 계정에서 쓸 수 없으면 404 → 추출형으로 대체되므로 `OPENAI_MODEL` 로 바꾸세요.
+   - Claude: 개발 PC 에 API 키가 없습니다. Claude 경로는 가짜 SDK 응답을 쓴 단위 테스트(성공·거절·빈 응답·네트워크 오류·기타 SDK 오류)와, 닫힌 포트로 실제 연결 실패를 일으킨 실행까지 확인했습니다.
 2. (해결됨, v0.3.0 이후) 대체 시 `mode` 가 `claude` 로 표시되던 문제 → `LlmAnswer` 로 실제 방식을 반환
 3. (해결됨, v0.3.0 이후) 네트워크 오류가 500 이 되던 문제 → `AnthropicIoException`·`AnthropicException` 도 추출형으로 대체
 4. **짧은 후속 질문 일부는 정답이 2~3위입니다.** 예: "기내는요?" (3.11 예시). Claude 모드는 상위 4건을 모두 보므로 답할 수 있지만, 추출형은 1위 답변을 보여줍니다.

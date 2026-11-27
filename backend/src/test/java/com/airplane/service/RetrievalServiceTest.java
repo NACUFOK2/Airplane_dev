@@ -20,7 +20,7 @@ class RetrievalServiceTest {
             "data/qa_embeddings.jsonl", List.of(),
             new RagProperties.Retrieval(4, 60, 200, 0.60, true, true, 8, List.of("아시아나", "KTX", "에어비앤비")),
             new RagProperties.Embedding("http://unused", 1000, 384),
-            new RagProperties.Llm("extractive", "m", 100, 3),
+            new RagProperties.Llm("extractive", "m", 100, 3, null),
             new RagProperties.Feedback(false, "unused"),
             List.of(new RagProperties.OrganizationDef("koreanair", "대한항공", "항공사", "#000", List.of("koreanair.com"), List.of()),
                     new RagProperties.OrganizationDef("jejuair", "제주항공", "항공사", "#000", List.of("jejuair.net"), List.of()),

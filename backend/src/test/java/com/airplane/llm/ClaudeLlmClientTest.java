@@ -27,7 +27,7 @@ class ClaudeLlmClientTest {
     private final AnthropicClient client = mock(AnthropicClient.class);
     private final MessageService messages = mock(MessageService.class);
     private final ClaudeLlmClient claude = new ClaudeLlmClient(client,
-            new RagProperties.Llm("claude", "claude-opus-5-5", 2000, 3));
+            new RagProperties.Llm("claude", "claude-opus-5-5", 2000, 3, null));
     private final List<RetrievedDocument> context = List.of(new RetrievedDocument(
             QaDocument.single("항공-014", "항공사", "대한항공", "보조배터리는 어떻게 가져가나요?",
                     "1인 5개까지 휴대 수하물로만 운송 가능합니다.", "https://www.koreanair.com", true, null),

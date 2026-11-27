@@ -26,8 +26,11 @@ public record RagProperties(
 
     public record Feedback(boolean enabled, String logDir) {}
 
-    /** provider: auto(키 있으면 claude) | claude | extractive */
-    public record Llm(String provider, String model, long maxTokens, int historyTurns) {}
+    /** provider: auto | claude | openai | extractive */
+    public record Llm(String provider, String model, long maxTokens, int historyTurns, OpenAi openai) {}
+
+    /** OpenAI Chat Completions 설정. API 키는 OPENAI_API_KEY 환경변수로만 받는다. */
+    public record OpenAi(String model, String baseUrl, int maxCompletionTokens, String reasoningEffort, int timeoutMs) {}
 
     public record OrganizationDef(String code, String name, String type, String brandColor,
                                   List<String> officialDomains, List<String> aliases) {}

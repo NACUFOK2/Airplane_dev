@@ -13,7 +13,8 @@
   },
   // 시크릿은 호스트의 환경변수에서만 주입 (파일로 커밋 금지)
   "remoteEnv": {
-    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
+    "OPENAI_API_KEY": "${localEnv:OPENAI_API_KEY}"
   },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "customizations": {
