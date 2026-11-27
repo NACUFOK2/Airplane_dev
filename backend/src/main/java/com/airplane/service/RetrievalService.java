@@ -41,7 +41,28 @@ public class RetrievalService {
 
     /** @param selectedOrg 사용자가 고른 기관 (null 이면 전체) */
     public RetrievalResult retrieve(String query, Organization selectedOrg) {
-        String orgFilter = resolveOrgFilter(query, selectedOrg);
+        return retrieve(query, selectedOrg, null);
+    }
+
+    /**
+     * 멀티턴 검색. 후속 질문은 직전 사용자 질문으로 보완한다 (근거: docs/RAG_PARAMETERS.md '후속 질문').
+     * @param previousQuestion 직전 사용자 질문 (없으면 null)
+     */
+    public RetrievalResult retrieve(String question, Organization selectedOrg, String previousQuestion) {
+        boolean hasPrev = previousQuestion != null && !previousQuestion.isBlank();
+        String query = hasPrev && isShortFollowup(question) ? previousQuestion + " " + question : question;
+        String orgFilter = resolveOrgFilter(question, selectedOrg);
+        if (orgFilter == null && hasPrev && cfg.followupCarryOrg() && cfg.autoOrgFilter()) {
+            orgFilter = organizationRepository.detectInText(previousQuestion).map(Organization::name).orElse(null);
+        }
+        return search(query, orgFilter);
+    }
+
+    boolean isShortFollowup(String question) {
+        return question.replaceAll("\\s", "").length() < cfg.followupShortChars();
+    }
+
+    private RetrievalResult search(String query, String orgFilter) {
         boolean[] allowed = new boolean[docs.size()];
         for (int i = 0; i < docs.size(); i++) allowed[i] = orgFilter == null || docs.get(i).org().equals(orgFilter);
 
