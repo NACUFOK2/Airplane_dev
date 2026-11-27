@@ -28,7 +28,7 @@ rag:
 
   feedback:
     enabled: true
-    log-dir: chat-logs       # gitignore 대상. 개인정보는 마스킹 후 저장 (PiiMasker)
+    log-dir: chat-logs       # gitignore 대상. 개인정보는 마스킹 후 저장 (PrivacyMasker)
 
   llm:
     provider: auto           # auto(키 있으면 claude) | claude | extractive

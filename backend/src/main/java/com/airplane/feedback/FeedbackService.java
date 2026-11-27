@@ -38,12 +38,12 @@ public class FeedbackService {
     }
 
     public void recordFeedback(String rating, String question, String orgCode, String mode, List<String> sourceIds) {
-        append(new FeedbackEvent(now(), "feedback", rating, PiiMasker.mask(question), orgCode, mode,
+        append(new FeedbackEvent(now(), "feedback", rating, PrivacyMasker.mask(question), orgCode, mode,
                 sourceIds == null ? List.of() : List.copyOf(sourceIds)));
     }
 
     public void recordOutOfScope(String question, String orgCode) {
-        append(new FeedbackEvent(now(), "out_of_scope", null, PiiMasker.mask(question), orgCode, "out_of_scope", List.of()));
+        append(new FeedbackEvent(now(), "out_of_scope", null, PrivacyMasker.mask(question), orgCode, "out_of_scope", List.of()));
     }
 
     public Insights insights(int limit) {
