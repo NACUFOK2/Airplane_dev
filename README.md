@@ -11,6 +11,7 @@
 - **Frontend**: Next.js (App Router) · 토스 스타일 UI · `frontend/`
 - **Embedding**: Python FastAPI · `dragonkue/multilingual-e5-small-ko-v2` · `embedding-service/`
 - **Dev 환경**: `.devcontainer/` (JDK 21 + Maven + Node 20 + Python 3.11 일괄 구성)
+- **RAG 구현 명세**: [docs/RAG_SPEC.md](docs/RAG_SPEC.md)
 - **파라미터 설계 근거**: [docs/RAG_PARAMETERS.md](docs/RAG_PARAMETERS.md)
 - **데이터 분석 (항공사·여행사·숙박업체)**: [docs/DATA_ANALYSIS.md](docs/DATA_ANALYSIS.md)
 
@@ -50,9 +51,16 @@ cd frontend && npm install && npm run dev
 - API: `GET /api/organizations`, `POST /api/chat` `{ "question": "...", "orgCode": "koreanair|delta|booking|…|ALL" }` (기관 코드는 `application.yml` 의 `rag.organizations`)
 - 임베딩 서비스가 꺼져 있으면 BM25 키워드 검색만으로 자동 전환됩니다.
 
-### Claude 연결 (선택)
-`.env.example` 을 `.env` 로 복사해 `ANTHROPIC_API_KEY` 를 채우거나 셸에서 export 하세요.
-키가 없으면 검색된 규정 원문을 보여주는 **추출형 모드**로 동작합니다. (`.env` 는 커밋되지 않습니다)
+### 답변 생성 모델 연결 (선택)
+`.env.example` 을 `.env` 로 복사해 키를 하나 채우면 됩니다. `.env` 는 커밋되지 않습니다.
+
+| 키 | 사용 모델 |
+|---|---|
+| `ANTHROPIC_API_KEY` | Claude (`claude-opus-5-5`) — 둘 다 있으면 이쪽 우선 |
+| `OPENAI_API_KEY` | OpenAI (`gpt-5.6-sol`, `OPENAI_MODEL` 로 변경 가능) |
+| (없음) | 검색된 문답 원문을 보여주는 **추출형 모드** |
+
+> ⚠️ 키는 채팅·이슈·커밋에 붙여넣지 마세요. 노출됐다면 발급처에서 즉시 폐기(revoke)하고 새로 발급하세요.
 
 ## 주요 기능
 

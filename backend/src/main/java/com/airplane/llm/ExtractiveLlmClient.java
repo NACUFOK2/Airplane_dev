@@ -17,7 +17,11 @@ public class ExtractiveLlmClient implements LlmClient {
     static final String ALL_SCOPE = "전체 기관";
 
     @Override
-    public String generate(String question, List<RetrievedDocument> context, List<ChatTurn> history, String scopeLabel) {
+    public LlmAnswer generate(String question, List<RetrievedDocument> context, List<ChatTurn> history, String scopeLabel) {
+        return new LlmAnswer(text(context, scopeLabel), LlmAnswer.EXTRACTIVE);
+    }
+
+    String text(List<RetrievedDocument> context, String scopeLabel) {
         if (context.isEmpty()) {
             return "제공된 자료에서 관련 내용을 찾지 못했어요. 질문을 조금 더 구체적으로 해주시거나 고객센터에 문의해 주세요.";
         }
@@ -62,10 +66,5 @@ public class ExtractiveLlmClient implements LlmClient {
         sb.append("\n이용하시는 곳을 알려주시면 더 정확히 안내할게요.\n");
         if (anyUnofficial) sb.append("일부는 비공식 정리 자료 기준이라 공식 홈페이지에서 한 번 더 확인해 주세요.\n");
         return sb;
-    }
-
-    @Override
-    public String mode() {
-        return "extractive";
     }
 }

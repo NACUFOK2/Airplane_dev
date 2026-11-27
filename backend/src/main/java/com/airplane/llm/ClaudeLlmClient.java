@@ -5,6 +5,8 @@ import com.airplane.domain.ChatTurn;
 import com.airplane.domain.RetrievedDocument;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.core.JsonValue;
+import com.anthropic.errors.AnthropicException;
+import com.anthropic.errors.AnthropicIoException;
 import com.anthropic.errors.AnthropicServiceException;
 import com.anthropic.errors.RateLimitException;
 import com.anthropic.models.messages.Message;
@@ -31,7 +33,7 @@ public class ClaudeLlmClient implements LlmClient {
     }
 
     @Override
-    public String generate(String question, List<RetrievedDocument> context, List<ChatTurn> history, String scopeLabel) {
+    public LlmAnswer generate(String question, List<RetrievedDocument> context, List<ChatTurn> history, String scopeLabel) {
         MessageCreateParams.Builder builder = MessageCreateParams.builder()
                 .model(config.model())
                 .maxTokens(config.maxTokens())
@@ -50,25 +52,32 @@ public class ClaudeLlmClient implements LlmClient {
         try {
             Message response = client.messages().create(builder.build());
             if (response.stopReason().map(r -> r.toString().equals("refusal")).orElse(false)) {
-                return "죄송해요, 이 질문에는 답변을 드리기 어려워요. 다른 방식으로 질문해 주세요.";
+                return new LlmAnswer("죄송해요, 이 질문에는 답변을 드리기 어려워요. 다른 방식으로 질문해 주세요.", LlmAnswer.CLAUDE);
             }
             String text = response.content().stream()
                     .flatMap(block -> block.text().stream())
                     .map(TextBlock::text)
                     .collect(Collectors.joining("\n"))
                     .strip();
-            return text.isEmpty() ? fallback.generate(question, context, history, scopeLabel) : text;
+            if (text.isEmpty()) {
+                log.warn("Claude 빈 응답 → 추출형 답변으로 대체");
+                return fallback.generate(question, context, history, scopeLabel);
+            }
+            return new LlmAnswer(text, LlmAnswer.CLAUDE);
         } catch (RateLimitException e) {
-            log.warn("Claude rate limit → 추출형 답변으로 대체");
+            log.warn("Claude 요청 한도 초과(429) → 추출형 답변으로 대체");
             return fallback.generate(question, context, history, scopeLabel);
         } catch (AnthropicServiceException e) {
             log.error("Claude API 오류 (status={}) → 추출형 답변으로 대체", e.statusCode());
             return fallback.generate(question, context, history, scopeLabel);
+        } catch (AnthropicIoException e) {
+            // 타임아웃·연결 실패 등 네트워크 오류 (HTTP 상태 오류와 다른 예외 계층)
+            log.error("Claude 네트워크 오류 ({}) → 추출형 답변으로 대체", e.getClass().getSimpleName());
+            return fallback.generate(question, context, history, scopeLabel);
+        } catch (AnthropicException e) {
+            // 재시도 소진 등 그 밖의 SDK 오류도 사용자에게 500 대신 추출형 답변을 준다
+            log.error("Claude SDK 오류 ({}) → 추출형 답변으로 대체", e.getClass().getSimpleName());
+            return fallback.generate(question, context, history, scopeLabel);
         }
-    }
-
-    @Override
-    public String mode() {
-        return "claude";
     }
 }

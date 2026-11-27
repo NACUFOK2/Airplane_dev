@@ -9,6 +9,7 @@ import com.airplane.dto.ChatRequest;
 import com.airplane.dto.ChatResponse;
 import com.airplane.dto.SourceResponse;
 import com.airplane.feedback.FeedbackService;
+import com.airplane.llm.LlmAnswer;
 import com.airplane.llm.LlmClient;
 import com.airplane.repository.OrganizationRepository;
 import java.util.LinkedHashMap;
@@ -57,8 +58,8 @@ public class ChatService {
         }
 
         String scopeLabel = result.orgFilter() != null ? result.orgFilter() : "전체 기관";
-        String answer = llmClient.generate(request.question(), result.documents(), toHistory(request), scopeLabel);
-        return new ChatResponse(answer, llmClient.mode(), result.mode(), toSources(result.documents()));
+        LlmAnswer answer = llmClient.generate(request.question(), result.documents(), toHistory(request), scopeLabel);
+        return new ChatResponse(answer.text(), answer.mode(), result.mode(), toSources(result.documents()));
     }
 
     /** 설정의 기관 목록으로 범위 밖 안내 문구를 만든다 (기관이 늘어도 문구를 고칠 필요 없음). */
