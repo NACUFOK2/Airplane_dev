@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.airplane.client.EmbeddingClient;
 import com.airplane.config.RagProperties;
+import com.airplane.domain.Organization;
 import com.airplane.domain.QaDocument;
 import com.airplane.domain.RetrievalResult;
 import com.airplane.repository.OrganizationRepository;
@@ -17,7 +18,7 @@ class RetrievalServiceTest {
 
     private final RagProperties props = new RagProperties(
             "data/qa_embeddings.jsonl", List.of(),
-            new RagProperties.Retrieval(4, 60, 50, 0.50, true),
+            new RagProperties.Retrieval(4, 60, 50, 0.50, true, true, 8),
             new RagProperties.Embedding("http://unused", 1000, 384),
             new RagProperties.Llm("extractive", "m", 100, 3),
             List.of(new RagProperties.OrganizationDef("koreanair", "대한항공", "항공사", "#000", List.of("koreanair.com")),
@@ -65,5 +66,35 @@ class RetrievalServiceTest {
         RetrievalResult r = service(x -> Optional.of(q)).retrieve("오늘 날씨", null);
         assertThat(r.topDenseScore()).isLessThan(0.5);
         assertThat(r.outOfScope()).isTrue();
+    }
+
+    @Test
+    void followupInheritsOrgFromPreviousQuestion() {
+        RetrievalResult r = service(q -> Optional.empty()).retrieve("유아는 좌석 줘요?", null, "제주항공 반려동물 탈 수 있어요?");
+        assertThat(r.orgFilter()).isEqualTo("제주항공");
+        assertThat(r.documents()).allMatch(d -> d.doc().org().equals("제주항공"));
+    }
+
+    @Test
+    void orgNamedInFollowupOverridesPrevious() {
+        RetrievalResult r = service(q -> Optional.empty()).retrieve("대한항공은요?", null, "제주항공 보조배터리 몇 개?");
+        assertThat(r.orgFilter()).isEqualTo("대한항공");
+    }
+
+    @Test
+    void shortFollowupIsCombinedWithPreviousQuestion() {
+        RetrievalService s = service(q -> Optional.empty());
+        assertThat(s.isShortFollowup("기내는요?")).isTrue();
+        assertThat(s.isShortFollowup("카운터는 언제 마감해요?")).isFalse();
+        // '기내는요?' 단독으론 주제가 없지만 직전 질문과 합치면 기내 수하물(049)을 찾는다
+        RetrievalResult r = s.retrieve("기내는요?", null, "대한항공 무료 위탁 수하물 얼마예요?");
+        assertThat(r.documents()).extracting(d -> d.doc().id()).contains("049");
+    }
+
+    @Test
+    void selectedOrgChipWinsOverPreviousQuestion() {
+        Organization ke = orgs.findByCode("koreanair").orElseThrow();
+        RetrievalResult r = service(q -> Optional.empty()).retrieve("유아는?", ke, "제주항공 반려동물");
+        assertThat(r.orgFilter()).isEqualTo("대한항공");
     }
 }

@@ -39,7 +39,7 @@ public class ChatService {
         String code = request.orgCode() == null ? "ALL" : request.orgCode();
         Organization selected = "ALL".equals(code) ? null : organizationService.getByCode(code);
 
-        RetrievalResult result = retrievalService.retrieve(request.question(), selected);
+        RetrievalResult result = retrievalService.retrieve(request.question(), selected, previousUserQuestion(request));
 
         if (result.outOfScope() || result.documents().isEmpty()) {
             // 근거 없는 상태로 LLM 을 부르지 않는다: 환각 방지 + 비용 절감
@@ -60,6 +60,15 @@ public class ChatService {
                     snippet(r.doc().answer()), r.doc().source(), r.doc().official(), score));
         }
         return sources;
+    }
+
+    private static String previousUserQuestion(ChatRequest request) {
+        if (request.history() == null) return null;
+        for (int i = request.history().size() - 1; i >= 0; i--) {
+            ChatRequest.HistoryMessage m = request.history().get(i);
+            if ("user".equals(m.role()) && m.content() != null && !m.content().isBlank()) return m.content();
+        }
+        return null;
     }
 
     private List<ChatTurn> toHistory(ChatRequest request) {

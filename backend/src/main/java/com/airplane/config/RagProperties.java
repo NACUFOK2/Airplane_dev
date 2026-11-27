@@ -13,7 +13,8 @@ public record RagProperties(
         Llm llm,
         List<OrganizationDef> organizations) {
 
-    public record Retrieval(int topK, int rrfK, int candidatePool, double denseMinScore, boolean autoOrgFilter) {}
+    public record Retrieval(int topK, int rrfK, int candidatePool, double denseMinScore, boolean autoOrgFilter,
+                            boolean followupCarryOrg, int followupShortChars) {}
 
     public record Embedding(String baseUrl, int timeoutMs, int dimension) {}
 
